@@ -1,0 +1,2262 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>按摩店订单管理系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .header-actions button {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .header-actions button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Main Container */
+        .container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .toolbar-group label {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .toolbar select, .toolbar input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Checkbox style */
+        .checkbox-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Gantt Chart */
+        .gantt-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .gantt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .gantt-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .gantt-wrapper {
+            min-width: 1000px;
+        }
+
+        .time-axis {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            margin-left: 100px;
+        }
+
+        .time-slot {
+            flex: 1;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            position: relative;
+        }
+
+        /* 整点刻度线在时间槽的左侧边界 */
+        .time-slot::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: -8px;
+            height: 8px;
+            border-left: 2px solid #667eea;
+        }
+
+        .time-slot:first-child::before {
+            display: none;
+        }
+
+        /* 垂直网格线 */
+        .time-slot::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 1000px;
+            border-left: 1px dashed #e8e8e8;
+            pointer-events: none;
+        }
+
+        .time-slot:first-child::after {
+            display: none;
+        }
+
+        .therapist-row {
+            display: flex;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .therapist-info {
+            width: 100px;
+            flex-shrink: 0;
+            padding: 12px 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .therapist-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .therapist-status {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 11px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .status-available { background: #10b981; }
+        .status-busy { background: #ef4444; }
+        .status-rest { background: #9ca3af; }
+        .status-pending { background: #f59e0b; }
+        .status-arrived { background: #10b981; }
+        .status-expired { background: #6b7280; }
+
+        .timeline {
+            flex: 1;
+            height: 70px;
+            background: #fafafa;
+            border-radius: 6px;
+            position: relative;
+            border: 1px solid #e8e8e8;
+            margin-left: 0;
+        }
+
+        .timeline-grid {
+            display: flex;
+            height: 100%;
+            position: relative;
+        }
+
+        .timeline-grid-line {
+            flex: 1;
+            border-left: 1px dashed #e8e8e8;
+        }
+
+        .timeline-grid-line:first-child {
+            border-left: none;
+        }
+
+        .timeline-grid-line:last-child {
+            border-left: 1px solid #e0e0e0;
+        }
+
+        .booking-block {
+            position: absolute;
+            height: 54px;
+            top: 8px;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.2s;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .booking-block:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .booking-service {
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .booking-customer {
+            font-size: 10px;
+            opacity: 0.9;
+        }
+
+        .booking-bed {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        .block-dianping {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+            color: white;
+        }
+
+        .block-phone {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            color: white;
+        }
+
+        .block-wechat {
+            background: linear-gradient(135deg, #a8e063, #56ab2f);
+            color: white;
+        }
+
+        .block-addon {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: 2px dashed white;
+        }
+
+        .block-completed {
+            background: linear-gradient(135deg, #9ca3af, #6b7280);
+            color: white;
+            opacity: 0.8;
+        }
+
+        .legend {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        /* Order List */
+        .order-list-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .order-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .order-list-header h2 {
+            font-size: 16px;
+            color: #333;
+        }
+
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .order-table th {
+            text-align: left;
+            padding: 12px 8px;
+            background: #f8f9fa;
+            font-size: 12px;
+            color: #666;
+            font-weight: 500;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .order-table td {
+            padding: 12px 8px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+
+        .order-table tr:hover {
+            background: #fafafa;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-in-progress { background: #d1fae5; color: #065f46; }
+        .status-completed { background: #e0e7ff; color: #3730a3; }
+        .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+        .source-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .source-dianping { background: #fee2e2; color: #991b1b; }
+        .source-phone { background: #d1fae5; color: #065f46; }
+        .source-wechat { background: #dcfce7; color: #166534; }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        .action-buttons button {
+            padding: 4px 8px;
+            font-size: 11px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 16px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .availability-check {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .availability-check.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .availability-check.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        /* Add-on Modal */
+        .addon-timeline {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .addon-time-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .addon-time-row:last-child {
+            border-bottom: none;
+        }
+
+        .addon-time {
+            width: 100px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .addon-bar {
+            flex: 1;
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+
+        .bar-current { background: #667eea; color: white; }
+        .bar-free { background: #10b981; color: white; }
+        .bar-busy { background: #ef4444; color: white; }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.warning { background: #f59e0b; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🏠 按摩店订单管理系统</h1>
+        <div class="header-actions">
+            <span id="currentDate"></span>
+            <button onclick="openCheckInModal()">📍 用户报到</button>
+            <button onclick="openSettingsModal()">⚙️ 设置</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="btn-primary" onclick="openNewOrderModal()">+ 新建订单</button>
+            </div>
+
+            <div class="toolbar-group">
+                <label>订单来源:</label>
+                <div class="checkbox-group">
+                    <label><input type="checkbox" id="filterDianping" checked onchange="renderApp()"> 大众点评</label>
+                    <label><input type="checkbox" id="filterPhone" checked onchange="renderApp()"> 电话</label>
+                    <label><input type="checkbox" id="filterWechat" checked onchange="renderApp()"> 微信</label>
+                </div>
+            </div>
+
+            <div class="toolbar-group">
+                <label>技师筛选:</label>
+                <select id="therapistFilter" onchange="renderApp()">
+                    <option value="all">全部技师</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <label>日期:</label>
+                <input type="date" id="selectedDate" onchange="renderApp()">
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar" id="statsBar"></div>
+
+        <!-- Gantt Chart -->
+        <div class="gantt-container">
+            <div class="gantt-header">
+                <h2>👤 技师时间轴</h2>
+            </div>
+            <div class="gantt-wrapper">
+                <div class="time-axis" id="timeAxis"></div>
+                <div id="ganttRows"></div>
+            </div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #ff6b6b, #ee5a6f);"></div>
+                    <span>大众点评</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #4ecdc4, #44a08d);"></div>
+                    <span>电话预约</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #a8e063, #56ab2f);"></div>
+                    <span>微信预约</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #f093fb, #f5576c); border: 2px dashed white;"></div>
+                    <span>加钟</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(135deg, #9ca3af, #6b7280);"></div>
+                    <span>已完成</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order List -->
+        <div class="order-list-container">
+            <div class="order-list-header">
+                <h2>📋 今日订单列表</h2>
+                <button class="btn-secondary" onclick="exportReport()">📊 导出报表</button>
+            </div>
+            <table class="order-table">
+                <thead>
+                    <tr>
+                        <th>状态</th>
+                        <th>订单号</th>
+                        <th>客户</th>
+                        <th>服务</th>
+                        <th>技师/床位</th>
+                        <th>时间</th>
+                        <th>来源</th>
+                        <th>金额</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="orderTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- New/Edit Order Modal -->
+    <div class="modal-overlay" id="orderModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="orderModalTitle">新建订单</h3>
+                <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editOrderId">
+
+                <div class="form-group">
+                    <label>订单来源</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="source" value="dianping" checked> 大众点评</label>
+                        <label><input type="radio" name="source" value="phone"> 电话</label>
+                        <label><input type="radio" name="source" value="wechat"> 微信</label>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>客户姓名</label>
+                        <input type="text" id="customerName" placeholder="请输入客户姓名">
+                    </div>
+                    <div class="form-group">
+                        <label>联系电话</label>
+                        <input type="text" id="customerPhone" placeholder="请输入联系电话">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>服务项目</label>
+                        <select id="serviceType" onchange="updateServiceDuration()">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>预约日期</label>
+                        <input type="date" id="orderDate" onchange="onOrderDateOrTimeChange()">
+                    </div>
+                    <div class="form-group">
+                        <label>开始时间</label>
+                        <select id="startTime" onchange="onOrderDateOrTimeChange()">
+                            <option value="09:00">09:00</option>
+                            <option value="09:30">09:30</option>
+                            <option value="10:00">10:00</option>
+                            <option value="10:30">10:30</option>
+                            <option value="11:00">11:00</option>
+                            <option value="11:30">11:30</option>
+                            <option value="12:00">12:00</option>
+                            <option value="12:30">12:30</option>
+                            <option value="13:00">13:00</option>
+                            <option value="13:30">13:30</option>
+                            <option value="14:00">14:00</option>
+                            <option value="14:30">14:30</option>
+                            <option value="15:00">15:00</option>
+                            <option value="15:30">15:30</option>
+                            <option value="16:00">16:00</option>
+                            <option value="16:30">16:30</option>
+                            <option value="17:00">17:00</option>
+                            <option value="17:30">17:30</option>
+                            <option value="18:00">18:00</option>
+                            <option value="18:30">18:30</option>
+                            <option value="19:00">19:00</option>
+                            <option value="19:30">19:30</option>
+                            <option value="20:00">20:00</option>
+                            <option value="20:30">20:30</option>
+                            <option value="21:00">21:00</option>
+                            <option value="21:30">21:30</option>
+                            <option value="22:00">22:00</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>选择技师 <span style="font-size: 11px; color: #667eea;">（自动推荐空闲）</span></label>
+                        <select id="therapistSelect" onchange="checkAvailability()">
+                        </select>
+                        <div id="therapistAvailability" class="availability-check"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>床位安排 <span style="font-size: 11px; color: #667eea;">（自动推荐空闲）</span></label>
+                        <select id="bedSelect" onchange="checkAvailability()">
+                        </select>
+                        <div id="bedAvailability" class="availability-check"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="orderNotes" placeholder="请输入备注信息（如客户偏好、特殊要求等）"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeOrderModal()">取消</button>
+                <button class="btn-primary" onclick="saveOrder()">确认创建</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add-on Modal -->
+    <div class="modal-overlay" id="addonModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>加钟申请</h3>
+                <button class="modal-close" onclick="closeAddonModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="addonOrderId">
+                <div id="addonOrderInfo"></div>
+
+                <div class="form-group">
+                    <label>加钟时长</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="addonDuration" value="30" checked onchange="updateAddonPrice()"> +30 分钟</label>
+                        <label><input type="radio" name="addonDuration" value="60" onchange="updateAddonPrice()"> +60 分钟</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>加钟金额</label>
+                    <div style="font-size: 20px; font-weight: 600; color: #667eea;">
+                        ¥<span id="addonPrice">99</span>
+                    </div>
+                </div>
+
+                <div class="addon-timeline">
+                    <div style="font-size: 12px; color: #666; margin-bottom: 8px;">技师时间安排</div>
+                    <div id="addonTherapistTimeline"></div>
+                    <div style="font-size: 12px; color: #666; margin-top: 12px; margin-bottom: 8px;">床位安排</div>
+                    <div id="addonBedTimeline"></div>
+                </div>
+
+                <div id="addonResult" class="availability-check"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAddonModal()">取消</button>
+                <button class="btn-primary" id="confirmAddonBtn" onclick="confirmAddon()">确认加钟</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>⚙️ 资源设置</h3>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>技师管理</label>
+                    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px;">
+                        <button class="btn-secondary" onclick="adjustTherapistCount(-1)">-</button>
+                        <span id="therapistCountDisplay" style="font-size: 18px; font-weight: 600;">5</span>
+                        <button class="btn-secondary" onclick="adjustTherapistCount(1)">+</button>
+                        <span style="font-size: 12px; color: #666;">名技师</span>
+                    </div>
+                    <div id="therapistList"></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>床位管理</label>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <button class="btn-secondary" onclick="adjustBedCount(-1)">-</button>
+                        <span id="bedCountDisplay" style="font-size: 18px; font-weight: 600;">5</span>
+                        <button class="btn-secondary" onclick="adjustBedCount(1)">+</button>
+                        <span style="font-size: 12px; color: #666;">张床位</span>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>服务项目设置</span>
+                        <button class="btn-secondary" onclick="addNewService()" style="font-size: 12px;">+ 添加项目</button>
+                    </label>
+                    <div id="serviceList" style="margin-top: 12px;"></div>
+                </div>
+
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>加钟价格设置</label>
+                    <div style="display: flex; gap: 16px;">
+                        <div style="flex: 1;">
+                            <span style="font-size: 12px; color: #666;">30 分钟</span>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                <span style="font-size: 14px;">¥</span>
+                                <input type="number" id="addonPrice30Input" value="99" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div style="flex: 1;">
+                            <span style="font-size: 12px; color: #666;">60 分钟</span>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                <span style="font-size: 14px;">¥</span>
+                                <input type="number" id="addonPrice60Input" value="168" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSettingsModal()">关闭</button>
+                <button class="btn-primary" onclick="saveSettings()">保存设置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check-in Modal -->
+    <div class="modal-overlay" id="checkinModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📍 用户报到</h3>
+                <button class="modal-close" onclick="closeCheckInModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>请输入手机号</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="tel" id="checkinPhone" placeholder="请输入客户预留的手机号"
+                               oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                               style="flex: 1; font-size: 16px; padding: 12px; text-align: center; letter-spacing: 2px;">
+                        <button class="btn-primary" onclick="searchOrderByPhone()" style="white-space: nowrap;">搜索</button>
+                    </div>
+                </div>
+
+                <div id="checkinResult" style="margin-top: 16px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCheckInModal()">关闭</button>
+                <button class="btn-primary" id="confirmCheckinBtn" onclick="confirmCheckIn()" style="display: none;">确认报到</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+        // ==================== Data Store ====================
+        const STORE_KEY = 'massage_shop_data';
+
+        let appData = {
+            therapists: [
+                { id: 1, name: '王师傅', skills: '足疗', status: 'available' },
+                { id: 2, name: '李师傅', skills: '精油 SPA', status: 'available' },
+                { id: 3, name: '张师傅', skills: '推拿', status: 'available' },
+                { id: 4, name: '刘师傅', skills: '泰式按摩', status: 'available' },
+                { id: 5, name: '陈师傅', skills: '足疗', status: 'available' }
+            ],
+            beds: [
+                { id: 1, name: '1 号床', status: 'available' },
+                { id: 2, name: '2 号床', status: 'available' },
+                { id: 3, name: '3 号床', status: 'available' },
+                { id: 4, name: '4 号床', status: 'available' },
+                { id: 5, name: '5 号床', status: 'available' }
+            ],
+            services: [
+                { id: 1, name: '足疗 60min', duration: 60, price: 198 },
+                { id: 2, name: '足疗 90min', duration: 90, price: 298 },
+                { id: 3, name: '精油 SPA 60min', duration: 60, price: 268 },
+                { id: 4, name: '精油 SPA 90min', duration: 90, price: 398 },
+                { id: 5, name: '推拿 60min', duration: 60, price: 198 },
+                { id: 6, name: '推拿 90min', duration: 90, price: 298 },
+                { id: 7, name: '泰式按摩 90min', duration: 90, price: 368 }
+            ],
+            orders: [],
+            settings: {
+                therapistCount: 5,
+                bedCount: 5,
+                addonPrice30: 99,
+                addonPrice60: 168
+            }
+        };
+
+        function loadData() {
+            const saved = localStorage.getItem(STORE_KEY);
+            if (saved) {
+                appData = JSON.parse(saved);
+                // Migrate old data - add services if not present
+                if (!appData.services) {
+                    appData.services = [
+                        { id: 1, name: '足疗 60min', duration: 60, price: 198 },
+                        { id: 2, name: '足疗 90min', duration: 90, price: 298 },
+                        { id: 3, name: '精油 SPA 60min', duration: 60, price: 268 },
+                        { id: 4, name: '精油 SPA 90min', duration: 90, price: 398 },
+                        { id: 5, name: '推拿 60min', duration: 60, price: 198 },
+                        { id: 6, name: '推拿 90min', duration: 90, price: 298 },
+                        { id: 7, name: '泰式按摩 90min', duration: 90, price: 368 }
+                    ];
+                }
+                // Migrate old completed orders without arrivedAt to expired
+                const today = getTodayStr();
+                appData.orders.forEach(order => {
+                    if (order.date === today && order.status === 'completed' && !order.arrivedAt) {
+                        order.status = 'expired';
+                    }
+                });
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORE_KEY, JSON.stringify(appData));
+        }
+
+        // ==================== Utilities ====================
+        function generateOrderId() {
+            const num = appData.orders.length + 1;
+            return '#' + String(num).padStart(4, '0');
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.getElementById('toastContainer').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function parseTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+
+        function formatTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        }
+
+        function getTodayStr() {
+            return new Date().toISOString().split('T')[0];
+        }
+
+        function getTimeRange(start, duration) {
+            const startMin = parseTime(start);
+            const endMin = startMin + duration;
+            return { start: startMin, end: endMin };
+        }
+
+        // ==================== Initialization ====================
+        function initApp() {
+            loadData();
+            document.getElementById('selectedDate').value = getTodayStr();
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            populateServiceSelect();
+            renderApp();
+        }
+
+        // ==================== Rendering ====================
+        function renderApp() {
+            renderTimeAxis();
+            renderGanttRows();
+            renderStats();
+            renderOrderTable();
+            updateTherapistFilter();
+        }
+
+        function renderTimeAxis() {
+            const timeAxis = document.getElementById('timeAxis');
+            timeAxis.innerHTML = '';
+            // 9:00 到 21:00 共 13 个时间点，显示 13 个时间段（每个 1 小时）
+            for (let hour = 9; hour < 22; hour++) {
+                const slot = document.createElement('div');
+                slot.className = 'time-slot';
+                slot.textContent = `${hour}:00`;
+                timeAxis.appendChild(slot);
+            }
+        }
+
+        function renderGanttRows() {
+            const container = document.getElementById('ganttRows');
+            container.innerHTML = '';
+
+            const selectedDate = document.getElementById('selectedDate').value;
+            const therapistFilter = document.getElementById('therapistFilter').value;
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+            const currentTimeMin = currentHour * 60 + currentMin;
+
+            // 显示所有订单（包括已完成的）
+            const dayOrders = appData.orders.filter(o =>
+                o.date === selectedDate &&
+                o.status !== 'cancelled'
+            );
+
+            // Filter therapists if a specific one is selected
+            let therapistsToRender = appData.therapists;
+            if (therapistFilter !== 'all') {
+                therapistsToRender = appData.therapists.filter(t => t.id === parseInt(therapistFilter));
+            }
+
+            therapistsToRender.forEach(therapist => {
+                const row = document.createElement('div');
+                row.className = 'therapist-row';
+
+                // Check if therapist is currently busy (has an order in progress right now)
+                let isCurrentlyBusy = false;
+
+                for (const order of dayOrders.filter(o => o.therapistId === therapist.id && o.status !== 'completed')) {
+                    const orderStart = parseTime(order.startTime);
+                    const orderEnd = orderStart + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+                    if (currentTimeMin >= orderStart && currentTimeMin <= orderEnd) {
+                        isCurrentlyBusy = true;
+                        break;
+                    }
+                }
+
+                const statusClass = isCurrentlyBusy ? 'status-busy' : 'status-available';
+                const statusText = isCurrentlyBusy ? '服务中' : '空闲';
+
+                row.innerHTML = `
+                    <div class="therapist-info">
+                        <div class="therapist-name">${therapist.name}</div>
+                        <div class="therapist-status">
+                            <span class="status-dot ${statusClass}"></span>${statusText}
+                        </div>
+                    </div>
+                    <div class="timeline">
+                        <div class="timeline-grid">
+                            ${Array(13).fill('<div class="timeline-grid-line"></div>').join('')}
+                        </div>
+                        <div id="bookings-${therapist.id}"></div>
+                    </div>
+                `;
+
+                container.appendChild(row);
+
+                // Render bookings for this therapist (including completed orders)
+                const bookingsContainer = row.querySelector(`#bookings-${therapist.id}`);
+                const therapistOrders = dayOrders.filter(o => o.therapistId === therapist.id);
+
+                therapistOrders.forEach(order => {
+                    const block = createBookingBlock(order);
+                    if (block) bookingsContainer.appendChild(block);
+                });
+            });
+        }
+
+        function createBookingBlock(order) {
+            const startMin = parseTime(order.startTime);
+            const dayStart = parseTime('09:00');
+            const dayEnd = parseTime('22:00');
+            const dayMinutes = dayEnd - dayStart;
+
+            // Calculate all time blocks (main service + addons)
+            let blocks = [];
+
+            // Main service block
+            blocks.push({
+                start: startMin,
+                duration: order.duration,
+                order: order,
+                isAddon: false
+            });
+
+            // Add-on blocks
+            if (order.addons) {
+                let addonStart = startMin + order.duration;
+                order.addons.forEach(addon => {
+                    blocks.push({
+                        start: addonStart,
+                        duration: addon.duration,
+                        order: order,
+                        isAddon: true,
+                        addon: addon
+                    });
+                    addonStart += addon.duration;
+                });
+            }
+
+            // Create DOM elements for each block
+            const fragment = document.createElement('div');
+
+            blocks.forEach(block => {
+                const leftPercent = ((block.start - dayStart) / dayMinutes) * 100;
+                const widthPercent = (block.duration / dayMinutes) * 100;
+
+                if (leftPercent >= 100 || leftPercent + widthPercent <= 0) return;
+
+                // Completed orders show in gray
+                const blockClass = order.status === 'completed' ? 'block-completed' :
+                    (block.isAddon ? 'block-addon' :
+                    order.source === 'dianping' ? 'block-dianping' :
+                    order.source === 'phone' ? 'block-phone' : 'block-wechat');
+
+                const el = document.createElement('div');
+                el.className = `booking-block ${blockClass}`;
+
+                el.style.left = `${Math.max(0, leftPercent)}%`;
+                el.style.width = `${Math.min(widthPercent, 100 - leftPercent)}%`;
+
+                el.innerHTML = `
+                    <div class="booking-service">${block.isAddon ? '加钟' : order.service} ${order.status === 'completed' ? '(已完成)' : ''}</div>
+                    <div class="booking-customer">${order.customerName}</div>
+                    <div class="booking-bed">🛏️ ${order.bedId}号床</div>
+                `;
+
+                el.onclick = () => openOrderDetail(order.id);
+                fragment.appendChild(el);
+            });
+
+            return fragment;
+        }
+
+        function renderStats() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const dayOrders = appData.orders.filter(o => o.date === selectedDate);
+
+            const stats = {
+                total: dayOrders.filter(o => o.status !== 'cancelled' && o.status !== 'expired').length,
+                pending: dayOrders.filter(o => o.status === 'pending').length,
+                arrived: dayOrders.filter(o => o.status === 'arrived').length,
+                completed: dayOrders.filter(o => o.status === 'completed').length,
+                expired: dayOrders.filter(o => o.status === 'expired').length,
+                revenue: dayOrders.filter(o => o.status === 'completed')
+                    .reduce((sum, o) => sum + o.price + (o.addons || []).reduce((s, a) => s + a.price, 0), 0)
+            };
+
+            document.getElementById('statsBar').innerHTML = `
+                <div class="stat-item">
+                    <span class="stat-value">${stats.total}</span>
+                    <span class="stat-label">总订单</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.pending}</span>
+                    <span class="stat-label">待服务</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.arrived}</span>
+                    <span class="stat-label">服务中</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.completed}</span>
+                    <span class="stat-label">已完成</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">${stats.expired}</span>
+                    <span class="stat-label">已过期</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value">¥${stats.revenue.toLocaleString()}</span>
+                    <span class="stat-label">今日业绩</span>
+                </div>
+            `;
+        }
+
+        function renderOrderTable() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const filterDianping = document.getElementById('filterDianping').checked;
+            const filterPhone = document.getElementById('filterPhone').checked;
+            const filterWechat = document.getElementById('filterWechat').checked;
+
+            let dayOrders = appData.orders.filter(o => o.date === selectedDate);
+
+            // Filter by source
+            dayOrders = dayOrders.filter(o => {
+                if (o.source === 'dianping' && !filterDianping) return false;
+                if (o.source === 'phone' && !filterPhone) return false;
+                if (o.source === 'wechat' && !filterWechat) return false;
+                return true;
+            });
+
+            // Sort by start time
+            dayOrders.sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime));
+
+            const tbody = document.getElementById('orderTableBody');
+
+            if (dayOrders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div>暂无订单</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = dayOrders.map(order => {
+                const statusClass = {
+                    'pending': 'status-pending',
+                    'arrived': 'status-arrived',
+                    'completed': 'status-completed',
+                    'expired': 'status-expired',
+                    'cancelled': 'status-cancelled'
+                }[order.status] || 'status-pending';
+
+                const statusText = {
+                    'pending': '待服务',
+                    'arrived': '服务中',
+                    'completed': '已完成',
+                    'expired': '已过期',
+                    'cancelled': '已取消'
+                }[order.status] || '待服务';
+
+                const sourceClass = {
+                    'dianping': 'source-dianping',
+                    'phone': 'source-phone',
+                    'wechat': 'source-wechat'
+                }[order.source];
+
+                const sourceText = {
+                    'dianping': '大众点评',
+                    'phone': '电话',
+                    'wechat': '微信'
+                }[order.source];
+
+                const endTime = formatTime(parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0));
+
+                return `
+                    <tr>
+                        <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                        <td>${order.id}</td>
+                        <td>
+                            <div>${order.customerName}</div>
+                            <div style="font-size: 11px; color: #666;">${order.customerPhone}</div>
+                        </td>
+                        <td>
+                            <div>${order.service}</div>
+                            ${order.addons && order.addons.length > 0 ? `<div style="font-size: 11px; color: #f59e0b;">+${order.addons.length}次加钟</div>` : ''}
+                        </td>
+                        <td>${order.therapistId}号/${order.bedId}号床</td>
+                        <td>${order.startTime}-${endTime}</td>
+                        <td><span class="source-badge ${sourceClass}">${sourceText}</span></td>
+                        <td>¥${(order.price + (order.addons || []).reduce((s, a) => s + a.price, 0)).toLocaleString()}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${order.status !== 'cancelled' ? `<button class="btn-warning" onclick="openAddonModal('${order.id}')">+ 加钟</button>` : ''}
+                                <button class="btn-secondary" onclick="editOrder('${order.id}')">✏️</button>
+                                <button class="btn-danger" onclick="deleteOrder('${order.id}')">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateTherapistFilter() {
+            const select = document.getElementById('therapistFilter');
+            const currentValue = select.value;
+            select.innerHTML = '<option value="all">全部技师</option>' +
+                appData.therapists.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            select.value = currentValue;
+        }
+
+        // ==================== Order Modal ====================
+        function openNewOrderModal() {
+            document.getElementById('editOrderId').value = '';
+            document.getElementById('orderModalTitle').textContent = '新建订单';
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerPhone').value = '';
+            document.getElementById('orderDate').value = document.getElementById('selectedDate').value;
+            document.getElementById('orderNotes').value = '';
+
+            // Reset form
+            document.querySelector('input[name="source"][value="dianping"]').checked = true;
+            document.getElementById('startTime').selectedIndex = 0;
+
+            populateServiceSelect();
+            populateTherapistSelect();
+            populateBedSelect();
+
+            // Auto-select available therapist and bed
+            selectRecommendedTherapistAndBed();
+
+            document.getElementById('orderModal').style.display = 'flex';
+        }
+
+        // Auto-select recommended therapist and bed based on availability
+        function selectRecommendedTherapistAndBed() {
+            const date = document.getElementById('orderDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const service = getServiceFromSelect();
+            const timeRange = getTimeRange(startTime, service.duration);
+
+            // Count orders for each therapist today
+            const therapistOrderCount = {};
+            appData.therapists.forEach(t => {
+                therapistOrderCount[t.id] = 0;
+            });
+
+            const dayOrders = appData.orders.filter(o => o.date === date && o.status !== 'cancelled');
+            dayOrders.forEach(order => {
+                if (therapistOrderCount[order.therapistId] !== undefined) {
+                    therapistOrderCount[order.therapistId]++;
+                }
+            });
+
+            // Find available therapists sorted by order count (least first)
+            const availableTherapists = appData.therapists
+                .filter(t => {
+                    if (t.status === 'rest') return false;
+                    return !checkResourceConflict(t.id, date, timeRange, null, false);
+                })
+                .sort((a, b) => therapistOrderCount[a.id] - therapistOrderCount[b.id]);
+
+            // Find available beds
+            const availableBeds = appData.beds.filter(b => {
+                return !checkResourceConflict(b.id, date, timeRange, null, true);
+            });
+
+            const therapistSelect = document.getElementById('therapistSelect');
+            const bedSelect = document.getElementById('bedSelect');
+
+            // Select therapist with least orders
+            if (availableTherapists.length > 0) {
+                therapistSelect.value = availableTherapists[0].id;
+            }
+
+            // Select first available bed
+            if (availableBeds.length > 0) {
+                bedSelect.value = availableBeds[0].id;
+            }
+
+            checkAvailability();
+        }
+
+        function editOrder(orderId) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.getElementById('editOrderId').value = order.id;
+            document.getElementById('orderModalTitle').textContent = '编辑订单';
+            document.getElementById('customerName').value = order.customerName;
+            document.getElementById('customerPhone').value = order.customerPhone;
+            document.getElementById('orderDate').value = order.date;
+            document.getElementById('startTime').value = order.startTime;
+            document.getElementById('orderNotes').value = order.notes || '';
+
+            // Set source
+            document.querySelector(`input[name="source"][value="${order.source}"]`).checked = true;
+
+            populateServiceSelect();
+
+            // Set service
+            const serviceOption = Array.from(document.getElementById('serviceType').options)
+                .find(opt => opt.value === order.service);
+            if (serviceOption) serviceOption.selected = true;
+
+            populateTherapistSelect();
+            populateBedSelect();
+
+            document.getElementById('therapistSelect').value = order.therapistId;
+            document.getElementById('bedSelect').value = order.bedId;
+
+            checkAvailability();
+
+            document.getElementById('orderModal').style.display = 'flex';
+        }
+
+        function closeOrderModal() {
+            document.getElementById('orderModal').style.display = 'none';
+        }
+
+        function populateTherapistSelect() {
+            const select = document.getElementById('therapistSelect');
+            const date = document.getElementById('orderDate').value || getTodayStr();
+            const startTime = document.getElementById('startTime').value || '09:00';
+            const service = getServiceFromSelect();
+            const timeRange = getTimeRange(startTime, service.duration);
+
+            // Count orders for each therapist today
+            const therapistOrderCount = {};
+            appData.therapists.forEach(t => {
+                therapistOrderCount[t.id] = 0;
+            });
+            const dayOrders = appData.orders.filter(o => o.date === date && o.status !== 'cancelled');
+            dayOrders.forEach(order => {
+                if (therapistOrderCount[order.therapistId] !== undefined) {
+                    therapistOrderCount[order.therapistId]++;
+                }
+            });
+
+            select.innerHTML = appData.therapists.map(t => {
+                const isBusy = t.status === 'rest';
+                const hasConflict = isBusy || checkResourceConflict(t.id, date, timeRange, null, false);
+                const statusIcon = t.status === 'rest' ? '⚪' : (hasConflict ? '🔴' : '🟢');
+                const statusText = t.status === 'rest' ? '休息' : (hasConflict ? '占用' : '空闲');
+                const orderCount = therapistOrderCount[t.id] || 0;
+                return `<option value="${t.id}" ${hasConflict ? 'disabled' : ''}>${statusIcon} ${t.name} - ${orderCount}单 - ${statusText}</option>`;
+            }).join('');
+        }
+
+        function populateBedSelect() {
+            const select = document.getElementById('bedSelect');
+            const date = document.getElementById('orderDate').value || getTodayStr();
+            const startTime = document.getElementById('startTime').value || '09:00';
+            const service = getServiceFromSelect();
+            const timeRange = getTimeRange(startTime, service.duration);
+
+            select.innerHTML = appData.beds.map(b => {
+                const hasConflict = checkResourceConflict(b.id, date, timeRange, null, true);
+                const statusIcon = hasConflict ? '🔴' : '🟢';
+                const statusText = hasConflict ? '占用' : '空闲';
+                return `<option value="${b.id}">${statusIcon} ${b.name} - ${statusText}</option>`;
+            }).join('');
+        }
+
+        function updateServiceDuration() {
+            populateTherapistSelect();
+            populateBedSelect();
+            selectRecommendedTherapistAndBed();
+        }
+
+        function onOrderDateOrTimeChange() {
+            populateTherapistSelect();
+            populateBedSelect();
+            selectRecommendedTherapistAndBed();
+        }
+
+        function getServiceFromSelect() {
+            const select = document.getElementById('serviceType');
+            const selectedOption = select.options[select.selectedIndex];
+            return {
+                name: selectedOption.value,
+                duration: parseInt(selectedOption.dataset.duration),
+                price: parseInt(selectedOption.dataset.price)
+            };
+        }
+
+        function checkAvailability() {
+            const therapistId = parseInt(document.getElementById('therapistSelect').value);
+            const bedId = parseInt(document.getElementById('bedSelect').value);
+            const date = document.getElementById('orderDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const serviceSelect = document.getElementById('serviceType');
+            const duration = parseInt(serviceSelect.options[serviceSelect.selectedIndex].dataset.duration);
+            const editingId = document.getElementById('editOrderId').value;
+
+            const timeRange = getTimeRange(startTime, duration);
+
+            // Check therapist availability
+            const therapistConflict = checkResourceConflict(therapistId, date, timeRange, editingId);
+            const therapistDiv = document.getElementById('therapistAvailability');
+            therapistDiv.className = `availability-check ${therapistConflict ? 'error' : 'success'}`;
+            therapistDiv.textContent = therapistConflict ? '⚠️ 该时间段已被占用' : '✅ 该时间段可用';
+
+            // Check bed availability
+            const bedConflict = checkResourceConflict(bedId, date, timeRange, editingId, true);
+            const bedDiv = document.getElementById('bedAvailability');
+            bedDiv.className = `availability-check ${bedConflict ? 'error' : 'success'}`;
+            bedDiv.textContent = bedConflict ? '⚠️ 该床位已被占用' : '✅ 该床位可用';
+
+            return !therapistConflict && !bedConflict;
+        }
+
+        function checkResourceConflict(resourceId, date, timeRange, excludeOrderId, isBed = false) {
+            const dayOrders = appData.orders.filter(o =>
+                o.date === date &&
+                o.status !== 'cancelled' &&
+                o.id !== excludeOrderId &&
+                (isBed ? o.bedId === resourceId : o.therapistId === resourceId)
+            );
+
+            for (const order of dayOrders) {
+                const orderStart = parseTime(order.startTime);
+                const orderEnd = orderStart + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+
+                // Check overlap
+                if (timeRange.start < orderEnd && timeRange.end > orderStart) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function saveOrder() {
+            const editingId = document.getElementById('editOrderId').value;
+            const source = document.querySelector('input[name="source"]:checked').value;
+            const customerName = document.getElementById('customerName').value;
+            const customerPhone = document.getElementById('customerPhone').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const orderDate = document.getElementById('orderDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const therapistId = parseInt(document.getElementById('therapistSelect').value);
+            const bedId = parseInt(document.getElementById('bedSelect').value);
+            const notes = document.getElementById('orderNotes').value;
+
+            if (!customerName || !customerPhone) {
+                showToast('请填写客户姓名和电话', 'error');
+                return;
+            }
+
+            const service = getServiceFromSelect();
+            const duration = service.duration;
+            const price = service.price;
+
+            if (!checkAvailability()) {
+                showToast('当前时间或床位有冲突，请调整', 'error');
+                return;
+            }
+
+            if (editingId) {
+                // Update existing order
+                const order = appData.orders.find(o => o.id === editingId);
+                if (order) {
+                    order.source = source;
+                    order.customerName = customerName;
+                    order.customerPhone = customerPhone;
+                    order.service = serviceType;
+                    order.date = orderDate;
+                    order.startTime = startTime;
+                    order.duration = duration;
+                    order.price = price;
+                    order.therapistId = therapistId;
+                    order.bedId = bedId;
+                    order.notes = notes;
+                    showToast('订单已更新');
+                }
+            } else {
+                // Create new order
+                const order = {
+                    id: generateOrderId(),
+                    source,
+                    customerName,
+                    customerPhone,
+                    service: serviceType,
+                    date: orderDate,
+                    startTime,
+                    duration,
+                    price,
+                    therapistId,
+                    bedId,
+                    notes,
+                    status: 'pending',
+                    addons: [],
+                    createdAt: new Date().toISOString()
+                };
+                appData.orders.push(order);
+                showToast('订单已创建');
+            }
+
+            saveData();
+            closeOrderModal();
+            renderApp();
+        }
+
+        function deleteOrder(orderId) {
+            if (!confirm('确定要删除这个订单吗？')) return;
+
+            appData.orders = appData.orders.filter(o => o.id !== orderId);
+            saveData();
+            renderApp();
+            showToast('订单已删除');
+        }
+
+        function openOrderDetail(orderId) {
+            editOrder(orderId);
+        }
+
+        // ==================== Add-on Modal ====================
+        function openAddonModal(orderId) {
+            const order = appData.orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.getElementById('addonOrderId').value = orderId;
+
+            const currentEnd = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+
+            document.getElementById('addonOrderInfo').innerHTML = `
+                <div style="margin-bottom: 12px;">
+                    <strong>订单:</strong> ${order.id} ${order.customerName}<br>
+                    <strong>当前时间:</strong> ${order.startTime} - ${formatTime(currentEnd)}<br>
+                    <strong>服务:</strong> ${order.service}
+                </div>
+            `;
+
+            updateAddonPrice();
+            renderAddonTimeline(order);
+
+            document.getElementById('addonModal').style.display = 'flex';
+        }
+
+        function closeAddonModal() {
+            document.getElementById('addonModal').style.display = 'none';
+        }
+
+        function updateAddonPrice() {
+            const duration = document.querySelector('input[name="addonDuration"]:checked').value;
+            const price = duration === '30' ? appData.settings.addonPrice30 : appData.settings.addonPrice60;
+            document.getElementById('addonPrice').textContent = price;
+
+            // Re-check availability
+            checkAddonAvailability();
+        }
+
+        function renderAddonTimeline(order) {
+            const currentEnd = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+            const checkDuration = 120; // Check 2 hours ahead
+
+            const therapistTimeline = document.getElementById('addonTherapistTimeline');
+            const bedTimeline = document.getElementById('addonBedTimeline');
+
+            therapistTimeline.innerHTML = renderTimelineBars(order.therapistId, order.date, currentEnd, checkDuration, true);
+            bedTimeline.innerHTML = renderTimelineBars(order.bedId, order.date, currentEnd, checkDuration, false);
+        }
+
+        function renderTimelineBars(resourceId, date, startMin, duration, isTherapist) {
+            const slots = [30, 60, 90, 120];
+            let html = '';
+
+            slots.forEach(slotDur => {
+                const endMin = startMin + slotDur;
+                const hasConflict = checkResourceConflictForAddon(resourceId, date, { start: startMin, end: endMin }, isTherapist);
+
+                const barClass = slotDur <= (document.querySelector('input[name="addonDuration"]:checked').value) ?
+                    (hasConflict ? 'bar-busy' : 'bar-free') : 'bar-busy';
+
+                html += `
+                    <div class="addon-time-row">
+                        <div class="addon-time">${formatTime(startMin)}-${formatTime(endMin)}</div>
+                        <div class="addon-bar ${barClass}">
+                            ${hasConflict ? '⚠️ 已被占用' : '✅ 空闲'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        function checkResourceConflictForAddon(resourceId, date, timeRange, isTherapist) {
+            const dayOrders = appData.orders.filter(o =>
+                o.date === date &&
+                o.status !== 'cancelled' &&
+                (isTherapist ? o.therapistId === resourceId : o.bedId === resourceId)
+            );
+
+            for (const order of dayOrders) {
+                const orderStart = parseTime(order.startTime);
+                const orderEnd = orderStart + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+
+                if (timeRange.start < orderEnd && timeRange.end > orderStart) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function checkAddonAvailability() {
+            const orderId = document.getElementById('addonOrderId').value;
+            const order = appData.orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const duration = parseInt(document.querySelector('input[name="addonDuration"]:checked').value);
+            const currentEnd = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+
+            const therapistConflict = checkResourceConflictForAddon(order.therapistId, order.date, { start: currentEnd, end: currentEnd + duration }, true);
+            const bedConflict = checkResourceConflictForAddon(order.bedId, order.date, { start: currentEnd, end: currentEnd + duration }, false);
+
+            const resultDiv = document.getElementById('addonResult');
+            const btn = document.getElementById('confirmAddonBtn');
+
+            if (therapistConflict || bedConflict) {
+                resultDiv.className = 'availability-check error';
+                resultDiv.textContent = '⚠️ 该时间段资源不可用，请选择其他时长';
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+            } else {
+                resultDiv.className = 'availability-check success';
+                resultDiv.textContent = '✅ 可以加钟';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        }
+
+        function confirmAddon() {
+            const orderId = document.getElementById('addonOrderId').value;
+            const order = appData.orders.find(o => o.id === orderId);
+            if (!order) return;
+
+            const duration = parseInt(document.querySelector('input[name="addonDuration"]:checked').value);
+            const price = duration === '30' ? appData.settings.addonPrice30 : appData.settings.addonPrice60;
+
+            if (!order.addons) order.addons = [];
+            order.addons.push({ duration, price, createdAt: new Date().toISOString() });
+
+            saveData();
+            renderApp();
+            closeAddonModal();
+            showToast(`已成功加钟 ${duration} 分钟`);
+        }
+
+        // ==================== Settings Modal ====================
+        function openSettingsModal() {
+            document.getElementById('therapistCountDisplay').textContent = appData.therapists.length;
+            document.getElementById('bedCountDisplay').textContent = appData.beds.length;
+            document.getElementById('addonPrice30Input').value = appData.settings.addonPrice30;
+            document.getElementById('addonPrice60Input').value = appData.settings.addonPrice60;
+            renderTherapistList();
+            renderServiceList();
+            populateServiceSelect();
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function renderTherapistList() {
+            const container = document.getElementById('therapistList');
+            container.innerHTML = appData.therapists.map((t, i) => `
+                <div class="form-group" style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 13px; font-weight: 600; min-width: 70px;">${i + 1}号技师</span>
+                        <input type="text" value="${t.name}" onchange="updateTherapistName(${t.id}, this.value)"
+                               placeholder="技师姓名"
+                               style="flex: 1; min-width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <select onchange="updateTherapistSkill(${t.id}, this.value)"
+                                style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                            <option value="足疗" ${t.skills === '足疗' ? 'selected' : ''}>足疗</option>
+                            <option value="精油 SPA" ${t.skills === '精油 SPA' ? 'selected' : ''}>精油 SPA</option>
+                            <option value="推拿" ${t.skills === '推拿' ? 'selected' : ''}>推拿</option>
+                            <option value="泰式按摩" ${t.skills === '泰式按摩' ? 'selected' : ''}>泰式按摩</option>
+                        </select>
+                        <select onchange="updateTherapistStatus(${t.id}, this.value)"
+                                style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                            <option value="available" ${t.status === 'available' ? 'selected' : ''}>🟢 空闲</option>
+                            <option value="busy" ${t.status === 'busy' ? 'selected' : ''}>🔴 服务中</option>
+                            <option value="rest" ${t.status === 'rest' ? 'selected' : ''}>⚪ 休息</option>
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderServiceList() {
+            const container = document.getElementById('serviceList');
+            container.innerHTML = appData.services.map((s, i) => `
+                <div class="form-group" style="border: 1px solid #e0e0e0; padding: 12px; border-radius: 6px; margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 13px; font-weight: 600; min-width: 30px;">#${i + 1}</span>
+                        <input type="text" value="${s.name}" onchange="updateServiceName(${s.id}, this.value)"
+                               placeholder="项目名称"
+                               style="flex: 2; min-width: 120px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px; color: #666;">分钟</span>
+                            <input type="number" value="${s.duration}" onchange="updateServiceDuration(${s.id}, this.value)"
+                                   style="width: 50px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center;">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px; color: #666;">¥</span>
+                            <input type="number" value="${s.price}" onchange="updateServicePrice(${s.id}, this.value)"
+                                   style="width: 60px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center;">
+                        </div>
+                        ${appData.services.length > 1 ? `<button class="btn-danger" onclick="deleteService(${s.id})" style="padding: 4px 8px;">删除</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function adjustTherapistCount(delta) {
+            const newCount = appData.therapists.length + delta;
+            if (newCount < 1) return;
+            if (newCount > 20) {
+                showToast('最多支持 20 名技师', 'warning');
+                return;
+            }
+
+            if (delta > 0) {
+                const newId = Math.max(...appData.therapists.map(t => t.id)) + 1;
+                appData.therapists.push({
+                    id: newId,
+                    name: `新技师${newId}`,
+                    skills: '足疗',
+                    status: 'available'
+                });
+            } else {
+                // Check if last therapist has orders today
+                const lastTherapist = appData.therapists[appData.therapists.length - 1];
+                const todayOrders = appData.orders.filter(o =>
+                    o.date === getTodayStr() &&
+                    o.therapistId === lastTherapist.id &&
+                    o.status !== 'cancelled'
+                );
+
+                if (todayOrders.length > 0) {
+                    showToast('该技师今日有订单，无法删除', 'error');
+                    return;
+                }
+                appData.therapists.pop();
+            }
+
+            document.getElementById('therapistCountDisplay').textContent = appData.therapists.length;
+            renderTherapistList();
+        }
+
+        function adjustBedCount(delta) {
+            const newCount = appData.beds.length + delta;
+            if (newCount < 1) return;
+            if (newCount > 20) {
+                showToast('最多支持 20 张床位', 'warning');
+                return;
+            }
+
+            if (delta > 0) {
+                const newId = Math.max(...appData.beds.map(b => b.id)) + 1;
+                appData.beds.push({ id: newId, name: `${newId}号床`, status: 'available' });
+            } else {
+                const lastBed = appData.beds[appData.beds.length - 1];
+                const todayOrders = appData.orders.filter(o =>
+                    o.date === getTodayStr() &&
+                    o.bedId === lastBed.id &&
+                    o.status !== 'cancelled'
+                );
+
+                if (todayOrders.length > 0) {
+                    showToast('该床位今日有订单，无法删除', 'error');
+                    return;
+                }
+                appData.beds.pop();
+            }
+
+            document.getElementById('bedCountDisplay').textContent = appData.beds.length;
+        }
+
+        function updateTherapistName(id, name) {
+            const therapist = appData.therapists.find(t => t.id === id);
+            if (therapist) therapist.name = name;
+        }
+
+        function updateTherapistSkill(id, skill) {
+            const therapist = appData.therapists.find(t => t.id === id);
+            if (therapist) therapist.skills = skill;
+        }
+
+        function updateTherapistStatus(id, status) {
+            const therapist = appData.therapists.find(t => t.id === id);
+            if (therapist) therapist.status = status;
+        }
+
+        // Service management functions
+        function addNewService() {
+            const newId = Math.max(...appData.services.map(s => s.id)) + 1;
+            appData.services.push({
+                id: newId,
+                name: `新项目${newId}`,
+                duration: 60,
+                price: 198
+            });
+            renderServiceList();
+            showToast('已添加新服务项目');
+        }
+
+        function deleteService(id) {
+            if (appData.services.length <= 1) {
+                showToast('至少保留一个服务项目', 'warning');
+                return;
+            }
+            if (!confirm('确定要删除这个服务项目吗？')) return;
+            appData.services = appData.services.filter(s => s.id !== id);
+            renderServiceList();
+            populateServiceSelect();
+            showToast('服务项目已删除');
+        }
+
+        function updateServiceName(id, name) {
+            const service = appData.services.find(s => s.id === id);
+            if (service) service.name = name;
+        }
+
+        function updateServiceDuration(id, duration) {
+            const service = appData.services.find(s => s.id === id);
+            if (service) service.duration = parseInt(duration);
+        }
+
+        function updateServicePrice(id, price) {
+            const service = appData.services.find(s => s.id === id);
+            if (service) service.price = parseInt(price);
+        }
+
+        function populateServiceSelect() {
+            const select = document.getElementById('serviceType');
+            const currentValue = select.value;
+            select.innerHTML = appData.services.map(s =>
+                `<option value="${s.name}" data-duration="${s.duration}" data-price="${s.price}">${s.name} - ¥${s.price}</option>`
+            ).join('');
+            // Try to restore previous selection if still valid
+            const stillValid = Array.from(select.options).some(opt => opt.value === currentValue);
+            if (!stillValid && select.options.length > 0) {
+                select.selectedIndex = 0;
+            } else {
+                select.value = currentValue;
+            }
+        }
+
+        function saveSettings() {
+            appData.settings.therapistCount = appData.therapists.length;
+            appData.settings.bedCount = appData.beds.length;
+            appData.settings.addonPrice30 = parseInt(document.getElementById('addonPrice30Input').value) || 99;
+            appData.settings.addonPrice60 = parseInt(document.getElementById('addonPrice60Input').value) || 168;
+            saveData();
+            closeSettingsModal();
+            renderApp();
+            showToast('设置已保存');
+        }
+
+        // ==================== Export Report ====================
+        function exportReport() {
+            const selectedDate = document.getElementById('selectedDate').value;
+            const dayOrders = appData.orders.filter(o => o.date === selectedDate && o.status !== 'cancelled');
+
+            if (dayOrders.length === 0) {
+                showToast('当日暂无订单', 'warning');
+                return;
+            }
+
+            let report = `按摩店订单日报 - ${selectedDate}\n\n`;
+            report += `总订单数：${dayOrders.length}\n`;
+            report += `总业绩：¥${dayOrders.reduce((sum, o) => sum + o.price + (o.addons || []).reduce((s, a) => s + a.price, 0), 0).toLocaleString()}\n\n`;
+            report += `订单详情:\n`;
+            report += `-`.repeat(60) + `\n`;
+
+            dayOrders.sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime)).forEach(o => {
+                const source = { dianping: '大众点评', phone: '电话', wechat: '微信' }[o.source];
+                report += `${o.id} | ${o.startTime} | ${o.customerName} | ${o.service} | ${o.therapistId}号技师/${o.bedId}号床 | ${source} | ¥${o.price}\n`;
+                if (o.addons && o.addons.length > 0) {
+                    o.addons.forEach(a => {
+                        report += `  └─ 加钟${a.duration}分钟 ¥${a.price}\n`;
+                    });
+                }
+            });
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(report).then(() => {
+                showToast('报表已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败，请手动选择复制', 'error');
+            });
+        }
+
+        // ==================== Check-in Modal ====================
+        let currentCheckinOrder = null;
+
+        function openCheckInModal() {
+            document.getElementById('checkinPhone').value = '';
+            document.getElementById('checkinResult').innerHTML = '';
+            document.getElementById('confirmCheckinBtn').style.display = 'none';
+            currentCheckinOrder = null;
+            document.getElementById('checkinModal').style.display = 'flex';
+        }
+
+        function closeCheckInModal() {
+            document.getElementById('checkinModal').style.display = 'none';
+        }
+
+        function searchOrderByPhone() {
+            const phone = document.getElementById('checkinPhone').value;
+            const resultDiv = document.getElementById('checkinResult');
+            const confirmBtn = document.getElementById('confirmCheckinBtn');
+
+            if (phone.length < 11) {
+                resultDiv.innerHTML = '<div class="availability-check">请输入完整的手机号</div>';
+                confirmBtn.style.display = 'none';
+                return;
+            }
+
+            const selectedDate = document.getElementById('selectedDate').value;
+            const order = appData.orders.find(o =>
+                o.customerPhone.includes(phone) &&
+                o.date === selectedDate &&
+                o.status !== 'cancelled'
+            );
+
+            if (!order) {
+                resultDiv.innerHTML = '<div class="availability-check error">未找到今日订单，请核对手机号</div>';
+                confirmBtn.style.display = 'none';
+                return;
+            }
+
+            if (order.status === 'arrived' || order.status === 'completed') {
+                resultDiv.innerHTML = `<div class="availability-check">该用户已报到（状态：${order.status === 'arrived' ? '服务中' : '已完成'}）</div>`;
+                confirmBtn.style.display = 'none';
+                return;
+            }
+
+            currentCheckinOrder = order;
+            const startTime = order.startTime;
+            const endTime = formatTime(parseTime(startTime) + order.duration);
+
+            resultDiv.innerHTML = `
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 16px;">
+                    <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #0369a1;">找到订单</div>
+                    <div style="font-size: 13px; line-height: 1.8;">
+                        <div><strong>订单号：</strong>${order.id}</div>
+                        <div><strong>客户：</strong>${order.customerName}</div>
+                        <div><strong>服务：</strong>${order.service}</div>
+                        <div><strong>时间：</strong>${startTime} - ${endTime}</div>
+                        <div><strong>技师：</strong>${order.therapistId}号技师</div>
+                        <div><strong>床位：</strong>${order.bedId}号床</div>
+                    </div>
+                </div>
+            `;
+            confirmBtn.style.display = 'inline-block';
+        }
+
+        function confirmCheckIn() {
+            if (!currentCheckinOrder) return;
+
+            currentCheckinOrder.status = 'arrived';
+            currentCheckinOrder.arrivedAt = new Date().toISOString();
+
+            saveData();
+            renderApp();
+            showToast('用户报到成功');
+            closeCheckInModal();
+        }
+
+        // Auto-complete to service when time is up
+        function checkAndCompleteServices() {
+            const now = new Date();
+            const currentMin = now.getHours() * 60 + now.getMinutes();
+            const today = getTodayStr();
+            let changed = false;
+
+            appData.orders.forEach(order => {
+                // 只有已报到的订单，时间到了才能自动完成
+                if (order.date === today && order.status === 'arrived') {
+                    const endMin = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+                    if (currentMin >= endMin) {
+                        order.status = 'completed';
+                        order.completedAt = new Date().toISOString();
+                        changed = true;
+                    }
+                }
+                // 待服务的订单，时间过了还没报到，标记为已过期
+                if (order.date === today && order.status === 'pending') {
+                    const endMin = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+                    if (currentMin >= endMin && !order.arrivedAt) {
+                        order.status = 'expired';
+                        changed = true;
+                    }
+                }
+            });
+
+            if (changed) {
+                saveData();
+                renderApp();
+            }
+        }
+
+        // Run auto-complete every 30 seconds
+        setInterval(checkAndCompleteServices, 30000);
+
+        // Initialize app
+        initApp();
+    </script>
+</body>
+</html>
