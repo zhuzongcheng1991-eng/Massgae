@@ -1223,19 +1223,19 @@
         // ==================== Supabase Cloud Sync ====================
         const SUPABASE_URL = 'https://vgyklddspgvtbwvegsob.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_n9gfFPMnLr8ZiuAJdyT0WQ_ywxZWMnq';
-        let supabase = null;
-        let isCloudSync = false;
+        var supabaseClient = null;
+        var isCloudSync = false;
 
         function initSupabase() {
-            if (window.supabase && !supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            if (window.supabase && !supabaseClient) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                 isCloudSync = true;
                 console.log('[Cloud] Supabase initialized');
             }
         }
 
         async function saveToCloud() {
-            if (!supabase || !isCloudSync) return;
+            if (!supabaseClient || !isCloudSync) return;
 
             const today = getTodayStr();
             const todayOrders = appData.orders.filter(o => o.date === today);
@@ -1272,12 +1272,12 @@
         }
 
         async function loadFromCloud() {
-            if (!supabase || !isCloudSync) return false;
+            if (!supabaseClient || !isCloudSync) return false;
 
             const today = getTodayStr();
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('orders')
                     .select('data')
                     .eq('date', today)
@@ -1304,7 +1304,7 @@
             if (!isCloudSync) {
                 indicator.textContent = '本地模式';
                 indicator.className = 'sync-indicator local';
-            } else if (supabase) {
+            } else if (supabaseClient) {
                 indicator.textContent = '云同步';
                 indicator.className = 'sync-indicator synced';
             }
