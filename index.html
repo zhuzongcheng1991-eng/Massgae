@@ -1243,14 +1243,14 @@
             if (todayOrders.length === 0) return;
 
             try {
-                const { data: existing } = await supabase
+                const { data: existing, error: fetchError } = await supabaseClient
                     .from('orders')
-                    .select('data')
+                    .select('data,date')
                     .eq('date', today)
                     .single();
 
                 if (existing) {
-                    await supabase
+                    await supabaseClient
                         .from('orders')
                         .update({
                             data: todayOrders,
@@ -1258,7 +1258,7 @@
                         })
                         .eq('date', today);
                 } else {
-                    await supabase
+                    await supabaseClient
                         .from('orders')
                         .insert({
                             date: today,
@@ -1279,7 +1279,7 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('orders')
-                    .select('data')
+                    .select('data,date')
                     .eq('date', today)
                     .single();
 
