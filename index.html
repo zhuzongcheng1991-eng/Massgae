@@ -705,6 +705,7 @@
         <h1>🏠 按摩店订单管理系统</h1>
         <div class="header-actions">
             <span id="currentDate"></span>
+            <button onclick="openAnalysisPanel()">📊 数据分析</button>
             <button onclick="syncDianpingOrders()">🔄 同步点评订单</button>
             <button onclick="openCheckInModal()">📍 用户报到</button>
             <button onclick="openSalaryModal()">💰 工资统计</button>
@@ -1082,6 +1083,25 @@
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeSalaryModal()">关闭</button>
                 <button class="btn-primary" onclick="exportSalaryReport()">📊 导出报表</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Panel -->
+    <div class="modal-overlay" id="analysisPanel" style="display: none;">
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📊 数据分析</h3>
+                <button class="modal-close" onclick="closeAnalysisPanel()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 12px; margin-bottom: 20px; align-items: center;">
+                    <input type="date" id="analysisStart" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    <span>至</span>
+                    <input type="date" id="analysisEnd" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    <button class="btn-primary" onclick="renderAnalysis()">分析</button>
+                </div>
+                <div id="analysisContent"></div>
             </div>
         </div>
     </div>
@@ -2427,6 +2447,166 @@
 
             calculateSalary();
             document.getElementById('salaryModal').style.display = 'flex';
+        }
+
+        function closeSalaryModal() {
+            document.getElementById('salaryModal').style.display = 'none';
+        }
+
+        // ==================== Analysis Panel ====================
+        function openAnalysisPanel() {
+            const today = getTodayStr();
+            const lastMonth = new Date();
+            lastMonth.setDate(lastMonth.getDate() - 30);
+            const lastMonthStr = lastMonth.toISOString().split('T')[0];
+
+            document.getElementById('analysisStart').value = lastMonthStr;
+            document.getElementById('analysisEnd').value = today;
+            renderAnalysis();
+            document.getElementById('analysisPanel').style.display = 'flex';
+        }
+
+        function closeAnalysisPanel() {
+            document.getElementById('analysisPanel').style.display = 'none';
+        }
+
+        function renderAnalysis() {
+            const start = document.getElementById('analysisStart').value;
+            const end = document.getElementById('analysisEnd').value;
+
+            if (!start || !end) {
+                showToast('请选择日期范围', 'warning');
+                return;
+            }
+
+            const orders = appData.orders.filter(o =>
+                o.date >= start && o.date <= end && o.status !== 'cancelled'
+            );
+
+            if (orders.length === 0) {
+                document.getElementById('analysisContent').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>该日期范围内暂无订单</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+
+            // 1. 订单概览
+            const completed = orders.filter(o => o.status === 'completed');
+            const revenue = completed.reduce((s, o) => s + o.price + (o.addons || []).reduce((x, a) => x + a.price, 0), 0);
+
+            html += `<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+                <div style="padding: 16px; background: #f0f9ff; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 600; color: #667eea;">${orders.length}</div>
+                    <div style="font-size: 12px; color: #666;">总订单</div>
+                </div>
+                <div style="padding: 16px; background: #d1fae5; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 600; color: #059669;">${completed.length}</div>
+                    <div style="font-size: 12px; color: #666;">已完成</div>
+                </div>
+                <div style="padding: 16px; background: #fef3c7; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 600; color: #d97706;">¥${revenue.toLocaleString()}</div>
+                    <div style="font-size: 12px; color: #666;">总业绩</div>
+                </div>
+            </div>`;
+
+            // 2. 高峰/低峰分析
+            const hourData = {};
+            for (let h = 9; h <= 21; h++) hourData[h] = 0;
+            orders.forEach(o => {
+                const h = parseInt(o.startTime.split(':')[0]);
+                if (hourData[h] !== undefined) hourData[h]++;
+            });
+
+            const maxVal = Math.max(...Object.values(hourData));
+            const minVal = Math.min(...Object.values(hourData));
+            const peakHour = Object.keys(hourData).reduce((a, b) => hourData[a] > hourData[b] ? a : b);
+            const lowHour = Object.keys(hourData).reduce((a, b) => hourData[a] < hourData[b] ? a : b);
+
+            html += `<div style="margin-bottom: 20px; padding: 16px; background: #fafafa; border-radius: 8px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333;">📈 高峰/低峰时段</h4>
+                <div style="display: flex; gap: 16px; margin-bottom: 12px;">
+                    <span style="font-size: 13px;"><span style="color: #10b981;">●</span> 高峰：${peakHour}:00 (${hourData[peakHour]}单)</span>
+                    <span style="font-size: 13px;"><span style="color: #ef4444;">●</span> 低峰：${lowHour}:00 (${hourData[lowHour]}单)</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">`;
+
+            for (let h = 9; h <= 21; h++) {
+                const pct = maxVal > 0 ? (hourData[h] / maxVal) * 100 : 0;
+                const isPeak = h == peakHour;
+                const isLow = h == lowHour;
+                html += `<div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 45px; font-size: 11px; color: #666;">${h}:00</div>
+                    <div style="flex: 1; height: 20px; background: #e5e5e5; border-radius: 3px; overflow: hidden;">
+                        <div style="width: ${pct}%; height: 100%; background: ${isPeak ? '#10b981' : isLow ? '#ef4444' : '#667eea'}; border-radius: 3px;"></div>
+                    </div>
+                    <div style="width: 35px; font-size: 11px; color: #666; text-align: right;">${hourData[h]}单</div>
+                </div>`;
+            }
+
+            html += `</div></div>`;
+
+            // 3. 新熟客分析
+            const phoneStats = {};
+            orders.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).forEach(o => {
+                if (!phoneStats[o.customerPhone]) phoneStats[o.customerPhone] = { first: o.date, count: 0 };
+                phoneStats[o.customerPhone].count++;
+            });
+
+            let newCust = 0, repeatCust = 0;
+            orders.forEach(o => {
+                if (phoneStats[o.customerPhone].first === o.date) newCust++;
+                else repeatCust++;
+            });
+
+            const totalCust = newCust + repeatCust;
+            const newPct = totalCust > 0 ? Math.round((newCust / totalCust) * 100) : 0;
+            const repeatPct = totalCust > 0 ? Math.round((repeatCust / totalCust) * 100) : 0;
+
+            // 消费 3 次以上的忠实客户
+            const loyal = Object.values(phoneStats).filter(s => s.count >= 3).length;
+
+            html += `<div style="margin-bottom: 20px; padding: 16px; background: #fafafa; border-radius: 8px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333;">👥 顾客分析（按手机号）</h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+                    <div style="padding: 12px; background: #d1fae5; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 600; color: #059669;">${newCust}</div>
+                        <div style="font-size: 11px; color: #666;">新客 (${newPct}%)</div>
+                    </div>
+                    <div style="padding: 12px; background: #dbeafe; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 600; color: #2563eb;">${repeatCust}</div>
+                        <div style="font-size: 11px; color: #666;">熟客 (${repeatPct}%)</div>
+                    </div>
+                    <div style="padding: 12px; background: #fef3c7; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 20px; font-weight: 600; color: #d97706;">${loyal}</div>
+                        <div style="font-size: 11px; color: #666;">忠实客 (≥3 次)</div>
+                    </div>
+                </div>
+            </div>`;
+
+            // 4. 热门服务
+            const svcStats = {};
+            orders.forEach(o => { svcStats[o.service] = (svcStats[o.service] || 0) + 1; });
+            const sortedSvc = Object.entries(svcStats).sort((a, b) => b[1] - a[1]);
+
+            html += `<div style="padding: 16px; background: #fafafa; border-radius: 8px;">
+                <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333;">🔥 热门服务</h4>
+                <table class="order-table" style="font-size: 13px;">
+                    <thead><tr><th>服务</th><th>单量</th><th>占比</th></tr></thead>
+                    <tbody>`;
+
+            sortedSvc.forEach(([svc, cnt]) => {
+                const pct = Math.round((cnt / orders.length) * 100);
+                html += `<tr><td>${svc}</td><td>${cnt}</td><td>${pct}%</td></tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+
+            document.getElementById('analysisContent').innerHTML = html;
         }
 
         function closeSalaryModal() {
