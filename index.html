@@ -1389,7 +1389,7 @@
             }
         };
 
-        function loadData() {
+        async function loadData() {
             const saved = localStorage.getItem(STORE_KEY);
             if (saved) {
                 appData = JSON.parse(saved);
@@ -1421,9 +1421,8 @@
             }
             // Initialize Supabase and try to load from cloud
             initSupabase();
-            loadFromCloud().then(() => {
-                updateSyncStatus();
-            });
+            await loadFromCloud();
+            updateSyncStatus();
         }
 
         function saveData() {
@@ -1468,8 +1467,8 @@
         }
 
         // ==================== Initialization ====================
-        function initApp() {
-            loadData();
+        async function initApp() {
+            await loadData();
             document.getElementById('selectedDate').value = getTodayStr();
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {
                 year: 'numeric',
