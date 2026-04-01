@@ -1228,7 +1228,12 @@
 
         function initSupabase() {
             if (window.supabase && !supabaseClient) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                    auth: {
+                        autoRefreshToken: false,
+                        persistSession: false
+                    }
+                });
                 isCloudSync = true;
                 console.log('[Cloud] Supabase initialized');
             }
