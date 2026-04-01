@@ -705,7 +705,9 @@
         <h1>🏠 按摩店订单管理系统</h1>
         <div class="header-actions">
             <span id="currentDate"></span>
+            <button onclick="syncDianpingOrders()">🔄 同步点评订单</button>
             <button onclick="openCheckInModal()">📍 用户报到</button>
+            <button onclick="openSalaryModal()">💰 工资统计</button>
             <button onclick="openSettingsModal()">⚙️ 设置</button>
         </div>
     </div>
@@ -1002,6 +1004,26 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="form-group" style="margin-top: 20px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                    <label style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>🔌 大众点评 API 配置</span>
+                        <button class="btn-secondary" onclick="testDianpingApi()" style="font-size: 12px;">🧪 测试连接</button>
+                    </label>
+                    <div style="margin-top: 12px; padding: 16px; background: #f8f9fa; border-radius: 8px;">
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="font-size: 12px; color: #666;">App Key</label>
+                            <input type="text" id="dianpingAppKey" placeholder="请输入大众点评 App Key"
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-size: 12px; color: #666;">Secret</label>
+                            <input type="password" id="dianpingSecret" placeholder="请输入 Secret"
+                                   style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        </div>
+                        <div id="dianpingStatus" style="margin-top: 8px; font-size: 12px;"></div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeSettingsModal()">关闭</button>
@@ -1037,6 +1059,33 @@
         </div>
     </div>
 
+    <!-- Salary Modal -->
+    <div class="modal-overlay" id="salaryModal" style="display: none;">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>💰 工资统计</h3>
+                <button class="modal-close" onclick="closeSalaryModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>选择日期范围</label>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="date" id="salaryStartDate" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                        <span>至</span>
+                        <input type="date" id="salaryEndDate" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button class="btn-primary" onclick="calculateSalary()">统计</button>
+                    </div>
+                </div>
+
+                <div id="salaryResult" style="margin-top: 16px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeSalaryModal()">关闭</button>
+                <button class="btn-primary" onclick="exportSalaryReport()">📊 导出报表</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toastContainer"></div>
 
     <script>
@@ -1045,11 +1094,11 @@
 
         let appData = {
             therapists: [
-                { id: 1, name: '王师傅', skills: '足疗', status: 'available' },
-                { id: 2, name: '李师傅', skills: '精油 SPA', status: 'available' },
-                { id: 3, name: '张师傅', skills: '推拿', status: 'available' },
-                { id: 4, name: '刘师傅', skills: '泰式按摩', status: 'available' },
-                { id: 5, name: '陈师傅', skills: '足疗', status: 'available' }
+                { id: 1, name: '王师傅', status: 'available' },
+                { id: 2, name: '李师傅', status: 'available' },
+                { id: 3, name: '张师傅', status: 'available' },
+                { id: 4, name: '刘师傅', status: 'available' },
+                { id: 5, name: '陈师傅', status: 'available' }
             ],
             beds: [
                 { id: 1, name: '1 号床', status: 'available' },
@@ -1059,13 +1108,13 @@
                 { id: 5, name: '5 号床', status: 'available' }
             ],
             services: [
-                { id: 1, name: '足疗 60min', duration: 60, price: 198 },
-                { id: 2, name: '足疗 90min', duration: 90, price: 298 },
-                { id: 3, name: '精油 SPA 60min', duration: 60, price: 268 },
-                { id: 4, name: '精油 SPA 90min', duration: 90, price: 398 },
-                { id: 5, name: '推拿 60min', duration: 60, price: 198 },
-                { id: 6, name: '推拿 90min', duration: 90, price: 298 },
-                { id: 7, name: '泰式按摩 90min', duration: 90, price: 368 }
+                { id: 1, name: '足疗 60min', duration: 60, price: 198, commission: 60 },
+                { id: 2, name: '足疗 90min', duration: 90, price: 298, commission: 90 },
+                { id: 3, name: '精油 SPA 60min', duration: 60, price: 268, commission: 80 },
+                { id: 4, name: '精油 SPA 90min', duration: 90, price: 398, commission: 120 },
+                { id: 5, name: '推拿 60min', duration: 60, price: 198, commission: 60 },
+                { id: 6, name: '推拿 90min', duration: 90, price: 298, commission: 90 },
+                { id: 7, name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
             ],
             orders: [],
             settings: {
@@ -1083,15 +1132,21 @@
                 // Migrate old data - add services if not present
                 if (!appData.services) {
                     appData.services = [
-                        { id: 1, name: '足疗 60min', duration: 60, price: 198 },
-                        { id: 2, name: '足疗 90min', duration: 90, price: 298 },
-                        { id: 3, name: '精油 SPA 60min', duration: 60, price: 268 },
-                        { id: 4, name: '精油 SPA 90min', duration: 90, price: 398 },
-                        { id: 5, name: '推拿 60min', duration: 60, price: 198 },
-                        { id: 6, name: '推拿 90min', duration: 90, price: 298 },
-                        { id: 7, name: '泰式按摩 90min', duration: 90, price: 368 }
+                        { id: 1, name: '足疗 60min', duration: 60, price: 198, commission: 60 },
+                        { id: 2, name: '足疗 90min', duration: 90, price: 298, commission: 90 },
+                        { id: 3, name: '精油 SPA 60min', duration: 60, price: 268, commission: 80 },
+                        { id: 4, name: '精油 SPA 90min', duration: 90, price: 398, commission: 120 },
+                        { id: 5, name: '推拿 60min', duration: 60, price: 198, commission: 60 },
+                        { id: 6, name: '推拿 90min', duration: 90, price: 298, commission: 90 },
+                        { id: 7, name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
                     ];
                 }
+                // Migrate old services without commission field
+                appData.services.forEach(s => {
+                    if (s.commission === undefined) {
+                        s.commission = Math.round(s.price * 0.3); // Default 30% commission
+                    }
+                });
                 // Migrate old completed orders without arrivedAt to expired
                 const today = getTodayStr();
                 appData.orders.forEach(order => {
@@ -1903,6 +1958,7 @@
             renderTherapistList();
             renderServiceList();
             populateServiceSelect();
+            loadDianpingConfig();
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
@@ -1919,13 +1975,6 @@
                         <input type="text" value="${t.name}" onchange="updateTherapistName(${t.id}, this.value)"
                                placeholder="技师姓名"
                                style="flex: 1; min-width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                        <select onchange="updateTherapistSkill(${t.id}, this.value)"
-                                style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                            <option value="足疗" ${t.skills === '足疗' ? 'selected' : ''}>足疗</option>
-                            <option value="精油 SPA" ${t.skills === '精油 SPA' ? 'selected' : ''}>精油 SPA</option>
-                            <option value="推拿" ${t.skills === '推拿' ? 'selected' : ''}>推拿</option>
-                            <option value="泰式按摩" ${t.skills === '泰式按摩' ? 'selected' : ''}>泰式按摩</option>
-                        </select>
                         <select onchange="updateTherapistStatus(${t.id}, this.value)"
                                 style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                             <option value="available" ${t.status === 'available' ? 'selected' : ''}>🟢 空闲</option>
@@ -1956,6 +2005,11 @@
                             <input type="number" value="${s.price}" onchange="updateServicePrice(${s.id}, this.value)"
                                    style="width: 60px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center;">
                         </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 12px; color: #666;">提成¥</span>
+                            <input type="number" value="${s.commission}" onchange="updateServiceCommission(${s.id}, this.value)"
+                                   style="width: 60px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; text-align: center;">
+                        </div>
                         ${appData.services.length > 1 ? `<button class="btn-danger" onclick="deleteService(${s.id})" style="padding: 4px 8px;">删除</button>` : ''}
                     </div>
                 </div>
@@ -1975,7 +2029,6 @@
                 appData.therapists.push({
                     id: newId,
                     name: `新技师${newId}`,
-                    skills: '足疗',
                     status: 'available'
                 });
             } else {
@@ -2032,11 +2085,6 @@
             if (therapist) therapist.name = name;
         }
 
-        function updateTherapistSkill(id, skill) {
-            const therapist = appData.therapists.find(t => t.id === id);
-            if (therapist) therapist.skills = skill;
-        }
-
         function updateTherapistStatus(id, status) {
             const therapist = appData.therapists.find(t => t.id === id);
             if (therapist) therapist.status = status;
@@ -2049,7 +2097,8 @@
                 id: newId,
                 name: `新项目${newId}`,
                 duration: 60,
-                price: 198
+                price: 198,
+                commission: 60
             });
             renderServiceList();
             showToast('已添加新服务项目');
@@ -2082,6 +2131,11 @@
             if (service) service.price = parseInt(price);
         }
 
+        function updateServiceCommission(id, commission) {
+            const service = appData.services.find(s => s.id === id);
+            if (service) service.commission = parseInt(commission);
+        }
+
         function populateServiceSelect() {
             const select = document.getElementById('serviceType');
             const currentValue = select.value;
@@ -2103,9 +2157,115 @@
             appData.settings.addonPrice30 = parseInt(document.getElementById('addonPrice30Input').value) || 99;
             appData.settings.addonPrice60 = parseInt(document.getElementById('addonPrice60Input').value) || 168;
             saveData();
+
+            // Save Dianping API config
+            saveDianpingConfig();
+
             closeSettingsModal();
             renderApp();
             showToast('设置已保存');
+        }
+
+        // ==================== Dianping API ====================
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        async function saveDianpingConfig() {
+            const appkey = document.getElementById('dianpingAppKey').value;
+            const secret = document.getElementById('dianpingSecret').value;
+
+            if (appkey && secret) {
+                try {
+                    await fetch(`${API_BASE_URL}/config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            dianping: { appkey, secret }
+                        })
+                    });
+                    document.getElementById('dianpingStatus').innerHTML =
+                        '<span style="color: #10b981;">✅ API 配置已保存到后端服务</span>';
+                } catch (error) {
+                    document.getElementById('dianpingStatus').innerHTML =
+                        '<span style="color: #ef4444;">❌ 保存失败，请确保后端服务正在运行</span>';
+                }
+            }
+        }
+
+        async function testDianpingApi() {
+            const appkey = document.getElementById('dianpingAppKey').value;
+            const secret = document.getElementById('dianpingSecret').value;
+
+            if (!appkey || !secret) {
+                document.getElementById('dianpingStatus').innerHTML =
+                    '<span style="color: #f59e0b;">⚠️ 请先填写 App Key 和 Secret</span>';
+                return;
+            }
+
+            document.getElementById('dianpingStatus').innerHTML =
+                '<span style="color: #667eea;">🔄 正在测试连接...</span>';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/sync/dianping`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('dianpingStatus').innerHTML =
+                        `<span style="color: #10b981;">✅ 测试成功！同步了 ${result.synced} 个订单</span>`;
+                    // Refresh orders
+                    renderApp();
+                } else {
+                    document.getElementById('dianpingStatus').innerHTML =
+                        `<span style="color: #ef4444;">❌ 测试失败：${result.error}</span>`;
+                }
+            } catch (error) {
+                document.getElementById('dianpingStatus').innerHTML =
+                    '<span style="color: #ef4444;">❌ 连接失败，请确保后端服务正在运行 (http://localhost:3000)</span>';
+            }
+        }
+
+        async function syncDianpingOrders() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/sync/dianping`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    renderApp();
+                    showToast(`成功同步 ${result.synced} 个大众点评订单`);
+                } else {
+                    showToast(`同步失败：${result.error}`, 'error');
+                }
+            } catch (error) {
+                showToast('同步失败，请确保后端服务正在运行', 'error');
+            }
+        }
+
+        // Load Dianping API config
+        async function loadDianpingConfig() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/config`);
+                const config = await response.json();
+
+                if (config.dianping && config.dianping.configured) {
+                    document.getElementById('dianpingAppKey').value = '';
+                    document.getElementById('dianpingSecret').value = '';
+                    document.getElementById('dianpingStatus').innerHTML =
+                        '<span style="color: #10b981;">✅ 已配置 API 连接（点击测试验证）</span>';
+                } else {
+                    document.getElementById('dianpingStatus').innerHTML =
+                        '<span style="color: #666;">⚠️ 未配置 API，请在上方填写 App Key 和 Secret</span>';
+                }
+            } catch (error) {
+                document.getElementById('dianpingStatus').innerHTML =
+                    '<span style="color: #666;">⚠️ 无法连接到后端服务，请确保 server.js 正在运行</span>';
+            }
         }
 
         // ==================== Export Report ====================
@@ -2254,6 +2414,196 @@
 
         // Run auto-complete every 30 seconds
         setInterval(checkAndCompleteServices, 30000);
+
+        // ==================== Salary Statistics ====================
+        function openSalaryModal() {
+            // Set default date range to current month
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            document.getElementById('salaryStartDate').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('salaryEndDate').value = lastDay.toISOString().split('T')[0];
+
+            calculateSalary();
+            document.getElementById('salaryModal').style.display = 'flex';
+        }
+
+        function closeSalaryModal() {
+            document.getElementById('salaryModal').style.display = 'none';
+        }
+
+        function calculateSalary() {
+            const startDate = document.getElementById('salaryStartDate').value;
+            const endDate = document.getElementById('salaryEndDate').value;
+
+            if (!startDate || !endDate) {
+                showToast('请选择日期范围', 'warning');
+                return;
+            }
+
+            // Filter completed orders in date range
+            const filteredOrders = appData.orders.filter(o =>
+                o.date >= startDate &&
+                o.date <= endDate &&
+                o.status === 'completed'
+            );
+
+            // Create service commission map
+            const serviceCommission = {};
+            appData.services.forEach(s => {
+                serviceCommission[s.name] = s.commission || 0;
+            });
+
+            // Calculate salary per therapist
+            const therapistSalary = {};
+            appData.therapists.forEach(t => {
+                therapistSalary[t.id] = {
+                    name: t.name,
+                    orderCount: 0,
+                    totalPrice: 0,
+                    commission: 0
+                };
+            });
+
+            filteredOrders.forEach(order => {
+                const tid = order.therapistId;
+                if (therapistSalary[tid]) {
+                    therapistSalary[tid].orderCount++;
+                    const totalAmount = order.price + (order.addons || []).reduce((s, a) => s + a.price, 0);
+                    therapistSalary[tid].totalPrice += totalAmount;
+
+                    // Calculate commission based on service
+                    let orderCommission = serviceCommission[order.service] || 0;
+
+                    // Add addon commission - same commission rate as the main service
+                    if (order.addons) {
+                        const baseCommission = serviceCommission[order.service] || 0;
+                        const basePrice = order.price;
+                        order.addons.forEach(addon => {
+                            // Calculate addon commission proportionally based on service commission
+                            const addonCommission = Math.round(baseCommission * (addon.price / basePrice));
+                            orderCommission += addonCommission;
+                        });
+                    }
+
+                    therapistSalary[tid].commission += orderCommission;
+                }
+            });
+
+            // Generate result HTML
+            let html = `
+                <div style="margin-bottom: 16px; font-size: 13px; color: #666;">
+                    统计范围：${startDate} 至 ${endDate} | 已完成订单：${filteredOrders.length} 单
+                </div>
+                <table class="order-table">
+                    <thead>
+                        <tr>
+                            <th>技师</th>
+                            <th>订单数</th>
+                            <th>业绩总额</th>
+                            <th>提成金额</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            let totalSalary = 0;
+            Object.values(therapistSalary).forEach(t => {
+                totalSalary += t.commission;
+                html += `
+                    <tr>
+                        <td>${t.name}</td>
+                        <td>${t.orderCount}</td>
+                        <td>¥${t.totalPrice.toLocaleString()}</td>
+                        <td style="color: #10b981; font-weight: 600;">¥${t.commission.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+                <div style="margin-top: 16px; padding: 16px; background: #f0f9ff; border-radius: 8px; text-align: right;">
+                    <span style="font-size: 14px; color: #666;">总计应发：</span>
+                    <span style="font-size: 20px; font-weight: 600; color: #667eea;">¥${totalSalary.toLocaleString()}</span>
+                </div>
+            `;
+
+            document.getElementById('salaryResult').innerHTML = html;
+        }
+
+        function exportSalaryReport() {
+            const startDate = document.getElementById('salaryStartDate').value;
+            const endDate = document.getElementById('salaryEndDate').value;
+            const resultDiv = document.getElementById('salaryResult');
+
+            if (!resultDiv.innerHTML.trim()) {
+                showToast('请先统计数据', 'warning');
+                return;
+            }
+
+            // Create service commission map
+            const serviceCommission = {};
+            appData.services.forEach(s => {
+                serviceCommission[s.name] = s.commission || 0;
+            });
+
+            // Recalculate for export
+            const filteredOrders = appData.orders.filter(o =>
+                o.date >= startDate && o.date <= endDate && o.status === 'completed'
+            );
+
+            const therapistSalary = {};
+            appData.therapists.forEach(t => {
+                therapistSalary[t.id] = {
+                    name: t.name,
+                    orderCount: 0,
+                    totalPrice: 0,
+                    commission: 0
+                };
+            });
+
+            filteredOrders.forEach(order => {
+                const tid = order.therapistId;
+                if (therapistSalary[tid]) {
+                    therapistSalary[tid].orderCount++;
+                    const totalAmount = order.price + (order.addons || []).reduce((s, a) => s + a.price, 0);
+                    therapistSalary[tid].totalPrice += totalAmount;
+
+                    // Calculate commission based on service
+                    let orderCommission = serviceCommission[order.service] || 0;
+
+                    // Add addon commission - same commission rate as the main service
+                    if (order.addons) {
+                        const baseCommission = serviceCommission[order.service] || 0;
+                        const basePrice = order.price;
+                        order.addons.forEach(addon => {
+                            // Calculate addon commission proportionally based on service commission
+                            const addonCommission = Math.round(baseCommission * (addon.price / basePrice));
+                            orderCommission += addonCommission;
+                        });
+                    }
+
+                    therapistSalary[tid].commission += orderCommission;
+                }
+            });
+
+            let report = `技师工资报表\n`;
+            report += `统计范围：${startDate} 至 ${endDate}\n`;
+            report += '='.repeat(60) + '\n\n';
+            report += `已完成订单：${filteredOrders.length} 单\n\n`;
+
+            Object.values(therapistSalary).forEach(t => {
+                report += `${t.name}: ${t.orderCount}单 | 业绩¥${t.totalPrice.toLocaleString()} | 提成¥${t.commission.toLocaleString()}\n`;
+            });
+
+            navigator.clipboard.writeText(report).then(() => {
+                showToast('报表已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败', 'error');
+            });
+        }
 
         // Initialize app
         initApp();
