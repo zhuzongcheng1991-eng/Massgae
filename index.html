@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>按摩店订单管理系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
             margin: 0;
@@ -16,6 +17,22 @@
             background: #f5f7fa;
             color: #333;
         }
+
+        /* Sync Status Indicator */
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            padding: 4px 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+        }
+        .sync-status.syncing { color: #f59e0b; }
+        .sync-status.synced { color: #10b981; }
+        .sync-status.error { color: #ef4444; }
+        .sync-status.offline { color: #6b7280; }
+    </style>
 
         /* Header */
         .header {
@@ -705,6 +722,7 @@
         <h1>🏠 按摩店订单管理系统</h1>
         <div class="header-actions">
             <span id="currentDate"></span>
+            <span id="syncStatus" class="sync-status offline">📴 本地模式</span>
             <button onclick="openAnalysisPanel()">📊 数据分析</button>
             <button onclick="syncDianpingOrders()">🔄 同步点评订单</button>
             <button onclick="openCheckInModal()">📍 用户报到</button>
@@ -1137,6 +1155,174 @@
     <div id="toastContainer"></div>
 
     <script>
+        // ==================== Supabase Cloud Sync ====================
+        const SUPABASE_URL = 'https://vgyklddspgvtbwvegsob.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_n9gfFPMnLr8ZiuAJdyT0WQ_ywxZWMnq';
+
+        let supabase = null;
+        let isCloudSync = false;
+        let isSyncing = false;
+
+        function initSupabase() {
+            try {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                isCloudSync = true;
+                updateSyncStatus('synced');
+                console.log('✅ Supabase 初始化成功');
+            } catch (error) {
+                console.error('❌ Supabase 初始化失败:', error);
+                updateSyncStatus('error');
+            }
+        }
+
+        function updateSyncStatus(status) {
+            const el = document.getElementById('syncStatus');
+            if (!el) return;
+
+            const statusText = {
+                'syncing': '🔄 同步中...',
+                'synced': '☁️ 已同步',
+                'error': '⚠️ 同步失败',
+                'offline': '📴 本地模式'
+            }[status];
+
+            el.className = `sync-status ${status}`;
+            el.textContent = statusText;
+        }
+
+        // Save data to Supabase
+        async function saveToCloud() {
+            if (!supabase || !isCloudSync) return false;
+
+            updateSyncStatus('syncing');
+            isSyncing = true;
+
+            try {
+                const today = getTodayStr();
+
+                // Get existing orders for today
+                const { data: existing, error: fetchError } = await supabase
+                    .from('orders')
+                    .select('id, data')
+                    .eq('date', today);
+
+                if (fetchError) throw fetchError;
+
+                // Prepare today's orders
+                const todayOrders = appData.orders.filter(o => o.date === today);
+                const orderData = JSON.stringify(todayOrders);
+
+                if (existing && existing.length > 0) {
+                    // Update existing record
+                    const { error: updateError } = await supabase
+                        .from('orders')
+                        .update({ data: orderData, updated_at: new Date().toISOString() })
+                        .eq('date', today);
+
+                    if (updateError) throw updateError;
+                } else {
+                    // Insert new record
+                    const { error: insertError } = await supabase
+                        .from('orders')
+                        .insert({
+                            date: today,
+                            data: orderData,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        });
+
+                    if (insertError) throw insertError;
+                }
+
+                // Also save therapists config
+                await supabase.from('config').upsert({
+                    key: 'therapists',
+                    data: JSON.stringify(appData.therapists),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' });
+
+                updateSyncStatus('synced');
+                console.log('✅ 数据已同步到云端');
+                return true;
+            } catch (error) {
+                console.error('❌ 同步失败:', error);
+                updateSyncStatus('error');
+                return false;
+            } finally {
+                isSyncing = false;
+            }
+        }
+
+        // Load data from Supabase
+        async function loadFromCloud() {
+            if (!supabase || !isCloudSync) return false;
+
+            try {
+                const today = getTodayStr();
+
+                // Load today's orders
+                const { data: orderData } = await supabase
+                    .from('orders')
+                    .select('data')
+                    .eq('date', today)
+                    .single();
+
+                if (orderData && orderData.data) {
+                    const cloudOrders = JSON.parse(orderData.data);
+                    // Merge with local orders (keep orders from other dates)
+                    const otherOrders = appData.orders.filter(o => o.date !== today);
+                    appData.orders = [...otherOrders, ...cloudOrders];
+                    console.log('✅ 已从云端加载今日订单');
+                }
+
+                // Load therapists config
+                const { data: configData } = await supabase
+                    .from('config')
+                    .select('data')
+                    .eq('key', 'therapists')
+                    .single();
+
+                if (configData && configData.data) {
+                    appData.therapists = JSON.parse(configData.data);
+                    console.log('✅ 已从云端加载技师配置');
+                }
+
+                return true;
+            } catch (error) {
+                console.log('ℹ️ 云端无数据，使用本地数据');
+                return false;
+            }
+        }
+
+        // Listen for real-time updates
+        function setupRealtimeSync() {
+            if (!supabase) return;
+
+            supabase.channel('orders')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'orders' },
+                    async (payload) => {
+                        console.log('🔄 检测到云端数据变化，同步中...');
+                        await loadFromCloud();
+                        renderApp();
+                    })
+                .subscribe();
+
+            console.log('✅ 实时同步已启用');
+        }
+
+        // Debounced save
+        let saveTimeout = null;
+        function debouncedSave() {
+            if (saveTimeout) clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                if (!isSyncing) {
+                    saveData();
+                    saveToCloud();
+                }
+            }, 500);
+        }
+
         // ==================== Admin Auth ====================
         const ADMIN_USER = 'Massageadmin';
         const ADMIN_PASS = 'P@ssw0rd';
@@ -1307,10 +1493,18 @@
                     }
                 });
             }
+            // Load from cloud (will merge with local data)
+            loadFromCloud().then(() => {
+                renderApp();
+            });
         }
 
         function saveData() {
             localStorage.setItem(STORE_KEY, JSON.stringify(appData));
+            // Also save to cloud if enabled
+            if (isCloudSync) {
+                saveToCloud();
+            }
         }
 
         // ==================== Utilities ====================
@@ -1350,6 +1544,9 @@
 
         // ==================== Initialization ====================
         function initApp() {
+            // Initialize Supabase first
+            initSupabase();
+
             loadData();
             document.getElementById('selectedDate').value = getTodayStr();
             document.getElementById('currentDate').textContent = new Date().toLocaleDateString('zh-CN', {
@@ -1361,6 +1558,11 @@
             populateServiceSelect();
             updateAdminUI();
             renderApp();
+
+            // Setup realtime sync after initial load
+            setTimeout(() => {
+                setupRealtimeSync();
+            }, 2000);
         }
 
         // ==================== Rendering ====================
