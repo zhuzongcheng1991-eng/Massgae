@@ -710,6 +710,7 @@
             <button onclick="openCheckInModal()">📍 用户报到</button>
             <button onclick="openSalaryModal()">💰 工资统计</button>
             <button onclick="openSettingsModal()">⚙️ 设置</button>
+            <button onclick="adminLogout()" id="adminLogoutBtn" style="display: none;">🔓 退出管理</button>
         </div>
     </div>
 
@@ -1087,6 +1088,33 @@
         </div>
     </div>
 
+    <!-- Admin Login Modal -->
+    <div class="modal-overlay" id="adminLoginModal" style="display: none;">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>🔐 管理员登录</h3>
+                <button class="modal-close" onclick="closeAdminLoginModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="adminUsername" placeholder="请输入用户名"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="adminPassword" placeholder="请输入密码"
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+                </div>
+                <div id="adminLoginError" style="color: #ef4444; font-size: 13px; margin-top: 8px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeAdminLoginModal()">取消</button>
+                <button class="btn-primary" onclick="adminLogin()">登录</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Analysis Panel -->
     <div class="modal-overlay" id="analysisPanel" style="display: none;">
         <div class="modal" style="max-width: 800px;">
@@ -1109,6 +1137,110 @@
     <div id="toastContainer"></div>
 
     <script>
+        // ==================== Admin Auth ====================
+        const ADMIN_USER = 'Massageadmin';
+        const ADMIN_PASS = 'P@ssw0rd';
+        const ADMIN_SESSION_KEY = 'massage_admin_logged_in';
+
+        function isAdminLoggedIn() {
+            return sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+        }
+
+        function setAdminLoggedIn(loggedIn) {
+            sessionStorage.setItem(ADMIN_SESSION_KEY, loggedIn ? 'true' : 'false');
+            updateAdminUI();
+        }
+
+        function updateAdminUI() {
+            const loggedIn = isAdminLoggedIn();
+            document.getElementById('adminLogoutBtn').style.display = loggedIn ? 'inline-block' : 'none';
+        }
+
+        function checkAdminAuth(callback) {
+            if (isAdminLoggedIn()) {
+                callback();
+            } else {
+                openAdminLoginModal(callback);
+            }
+        }
+
+        function openAdminLoginModal(callback) {
+            document.getElementById('adminUsername').value = '';
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminLoginError').textContent = '';
+            document.getElementById('adminLoginModal').style.display = 'flex';
+            window.adminLoginCallback = callback;
+        }
+
+        function closeAdminLoginModal() {
+            document.getElementById('adminLoginModal').style.display = 'none';
+            window.adminLoginCallback = null;
+        }
+
+        function adminLogin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+
+            if (username === ADMIN_USER && password === ADMIN_PASS) {
+                setAdminLoggedIn(true);
+                closeAdminLoginModal();
+                showToast('登录成功');
+                if (window.adminLoginCallback) {
+                    window.adminLoginCallback();
+                }
+            } else {
+                document.getElementById('adminLoginError').textContent = '用户名或密码错误';
+            }
+        }
+
+        function adminLogout() {
+            setAdminLoggedIn(false);
+            showToast('已退出管理员');
+        }
+
+        // Wrapper functions for admin features
+        function openAnalysisPanel() {
+            checkAdminAuth(() => {
+                const today = getTodayStr();
+                const lastMonth = new Date();
+                lastMonth.setDate(lastMonth.getDate() - 30);
+                const lastMonthStr = lastMonth.toISOString().split('T')[0];
+
+                document.getElementById('analysisStart').value = lastMonthStr;
+                document.getElementById('analysisEnd').value = today;
+                renderAnalysis();
+                document.getElementById('analysisPanel').style.display = 'flex';
+            });
+        }
+
+        function openSalaryModal() {
+            checkAdminAuth(() => {
+                const today = new Date();
+                const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+                const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+                document.getElementById('salaryStartDate').value = firstDay.toISOString().split('T')[0];
+                document.getElementById('salaryEndDate').value = lastDay.toISOString().split('T')[0];
+
+                calculateSalary();
+                document.getElementById('salaryModal').style.display = 'flex';
+            });
+        }
+
+        function openSettingsModal() {
+            checkAdminAuth(() => {
+                document.getElementById('therapistCountDisplay').textContent = appData.therapists.length;
+                document.getElementById('bedCountDisplay').textContent = appData.beds.length;
+                document.getElementById('addonPrice30Input').value = appData.settings.addonPrice30;
+                document.getElementById('addonPrice60Input').value = appData.settings.addonPrice60;
+                renderTherapistList();
+                renderServiceList();
+                populateServiceSelect();
+                loadDianpingConfig();
+                document.getElementById('settingsModal').style.display = 'flex';
+            });
+        }
+
         // ==================== Data Store ====================
         const STORE_KEY = 'massage_shop_data';
 
@@ -1227,6 +1359,7 @@
                 weekday: 'long'
             });
             populateServiceSelect();
+            updateAdminUI();
             renderApp();
         }
 
@@ -1970,18 +2103,6 @@
         }
 
         // ==================== Settings Modal ====================
-        function openSettingsModal() {
-            document.getElementById('therapistCountDisplay').textContent = appData.therapists.length;
-            document.getElementById('bedCountDisplay').textContent = appData.beds.length;
-            document.getElementById('addonPrice30Input').value = appData.settings.addonPrice30;
-            document.getElementById('addonPrice60Input').value = appData.settings.addonPrice60;
-            renderTherapistList();
-            renderServiceList();
-            populateServiceSelect();
-            loadDianpingConfig();
-            document.getElementById('settingsModal').style.display = 'flex';
-        }
-
         function closeSettingsModal() {
             document.getElementById('settingsModal').style.display = 'none';
         }
@@ -2436,36 +2557,11 @@
         setInterval(checkAndCompleteServices, 30000);
 
         // ==================== Salary Statistics ====================
-        function openSalaryModal() {
-            // Set default date range to current month
-            const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-            document.getElementById('salaryStartDate').value = firstDay.toISOString().split('T')[0];
-            document.getElementById('salaryEndDate').value = lastDay.toISOString().split('T')[0];
-
-            calculateSalary();
-            document.getElementById('salaryModal').style.display = 'flex';
-        }
-
         function closeSalaryModal() {
             document.getElementById('salaryModal').style.display = 'none';
         }
 
         // ==================== Analysis Panel ====================
-        function openAnalysisPanel() {
-            const today = getTodayStr();
-            const lastMonth = new Date();
-            lastMonth.setDate(lastMonth.getDate() - 30);
-            const lastMonthStr = lastMonth.toISOString().split('T')[0];
-
-            document.getElementById('analysisStart').value = lastMonthStr;
-            document.getElementById('analysisEnd').value = today;
-            renderAnalysis();
-            document.getElementById('analysisPanel').style.display = 'flex';
-        }
-
         function closeAnalysisPanel() {
             document.getElementById('analysisPanel').style.display = 'none';
         }
