@@ -1066,7 +1066,7 @@
                 <div class="form-group">
                     <label>请输入手机号</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="tel" id="checkinPhone" placeholder="请输入客户预留的手机号"
+                        <input type="tel" id="checkinPhone" placeholder="请输入客户预留手机号的後 4 位"
                                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                style="flex: 1; font-size: 16px; padding: 12px; text-align: center; letter-spacing: 2px;">
                         <button class="btn-primary" onclick="searchOrderByPhone()" style="white-space: nowrap;">搜索</button>
@@ -2601,18 +2601,32 @@
             const resultDiv = document.getElementById('checkinResult');
             const confirmBtn = document.getElementById('confirmCheckinBtn');
 
-            if (phone.length < 11) {
-                resultDiv.innerHTML = '<div class="availability-check">请输入完整的手机号</div>';
+            if (phone.length < 4) {
+                resultDiv.innerHTML = '<div class="availability-check">请输入至少 4 位手机号</div>';
                 confirmBtn.style.display = 'none';
                 return;
             }
 
             const selectedDate = document.getElementById('selectedDate').value;
-            const order = appData.orders.find(o =>
-                o.customerPhone.includes(phone) &&
-                o.date === selectedDate &&
-                o.status !== 'cancelled'
-            );
+
+            // 支持两种搜索方式：输入后 4 位或完整手机号
+            let order;
+            if (phone.length >= 11) {
+                // 完整手机号搜索
+                order = appData.orders.find(o =>
+                    o.customerPhone.includes(phone) &&
+                    o.date === selectedDate &&
+                    o.status !== 'cancelled'
+                );
+            } else {
+                // 后 4 位搜索
+                const phoneSuffix = phone.slice(-4);
+                order = appData.orders.find(o =>
+                    o.customerPhone.endsWith(phoneSuffix) &&
+                    o.date === selectedDate &&
+                    o.status !== 'cancelled'
+                );
+            }
 
             if (!order) {
                 resultDiv.innerHTML = '<div class="availability-check error">未找到今日订单，请核对手机号</div>';
