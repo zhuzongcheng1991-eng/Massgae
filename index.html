@@ -16,13 +16,14 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: #f5f7fa;
             color: #333;
+            font-size: 16px;
         }
 
         /* Header */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 16px 24px;
+            padding: 20px 28px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -30,13 +31,13 @@
         }
 
         .header h1 {
-            font-size: 20px;
-            font-weight: 600;
+            font-size: 26px;
+            font-weight: 700;
         }
 
         .header-actions {
             display: flex;
-            gap: 12px;
+            gap: 14px;
             align-items: center;
         }
 
@@ -44,10 +45,11 @@
             background: rgba(255,255,255,0.2);
             border: none;
             color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 12px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 500;
             transition: background 0.2s;
         }
 
@@ -57,10 +59,10 @@
 
         /* Sync Indicator */
         .sync-indicator {
-            padding: 4px 10px;
+            padding: 6px 14px;
             border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 14px;
+            font-weight: 600;
             margin-left: 8px;
         }
 
@@ -84,60 +86,68 @@
         /* Toolbar */
         .toolbar {
             background: white;
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 12px;
+            padding: 20px;
             margin-bottom: 20px;
             display: flex;
             flex-wrap: wrap;
-            gap: 16px;
+            gap: 20px;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .toolbar-group {
             display: flex;
-            gap: 8px;
+            gap: 12px;
             align-items: center;
         }
 
         .toolbar-group label {
-            font-size: 13px;
-            color: #666;
+            font-size: 16px;
+            color: #333;
+            font-weight: 500;
         }
 
         .toolbar select, .toolbar input[type="date"] {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
             background: white;
+            font-weight: 500;
+        }
+
+        .toolbar select:focus, .toolbar input[type="date"]:focus {
+            border-color: #667eea;
+            outline: none;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
+            padding: 14px 28px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 16px;
+            font-weight: 600;
             transition: transform 0.1s, box-shadow 0.2s;
         }
 
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
         }
 
         .btn-secondary {
             background: #f0f0f0;
             color: #333;
-            border: 1px solid #ddd;
-            padding: 8px 16px;
-            border-radius: 6px;
+            border: 2px solid #ddd;
+            padding: 12px 20px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 500;
         }
 
         .btn-secondary:hover {
@@ -148,55 +158,64 @@
             background: #10b981;
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 10px 18px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .btn-warning {
             background: #f59e0b;
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 10px 18px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .btn-danger {
             background: #ef4444;
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 10px 18px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         /* Checkbox style */
         .checkbox-group {
             display: flex;
-            gap: 8px;
+            gap: 12px;
         }
 
         .checkbox-group label {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
         }
 
         /* Stats Bar */
         .stats-bar {
             background: white;
-            border-radius: 8px;
-            padding: 16px;
+            border-radius: 12px;
+            padding: 20px;
             margin-bottom: 20px;
             display: flex;
-            gap: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            gap: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .stat-item {
@@ -205,24 +224,25 @@
         }
 
         .stat-value {
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 36px;
+            font-weight: 700;
             color: #667eea;
         }
 
         .stat-label {
-            font-size: 12px;
+            font-size: 14px;
             color: #666;
-            margin-top: 4px;
+            margin-top: 8px;
+            font-weight: 500;
         }
 
         /* Gantt Chart */
         .gantt-container {
             background: white;
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 24px;
             margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             overflow-x: auto;
         }
 
@@ -230,12 +250,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .gantt-header h2 {
-            font-size: 16px;
+            font-size: 20px;
             color: #333;
+            font-weight: 700;
         }
 
         .gantt-wrapper {
@@ -245,16 +266,17 @@
         .time-axis {
             display: flex;
             border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 8px;
-            margin-bottom: 16px;
-            margin-left: 100px;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+            margin-left: 140px;
         }
 
         .time-slot {
             flex: 1;
             text-align: center;
-            font-size: 12px;
-            color: #666;
+            font-size: 15px;
+            color: #333;
+            font-weight: 600;
             position: relative;
         }
 
@@ -289,36 +311,39 @@
 
         .therapist-row {
             display: flex;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             align-items: flex-start;
         }
 
         .therapist-info {
-            width: 100px;
+            width: 140px;
             flex-shrink: 0;
-            padding: 12px 8px;
+            padding: 16px 12px;
             background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 13px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
         }
 
         .therapist-name {
-            font-weight: 600;
+            font-weight: 700;
             color: #333;
+            font-size: 17px;
         }
 
         .therapist-status {
             display: inline-block;
-            margin-top: 4px;
-            font-size: 11px;
+            margin-top: 6px;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         .status-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin-right: 4px;
+            margin-right: 6px;
         }
 
         .status-available { background: #10b981; }
@@ -330,11 +355,11 @@
 
         .timeline {
             flex: 1;
-            height: 70px;
+            height: 80px;
             background: #fafafa;
-            border-radius: 6px;
+            border-radius: 8px;
             position: relative;
-            border: 1px solid #e8e8e8;
+            border: 2px solid #e8e8e8;
             margin-left: 0;
         }
 
@@ -359,11 +384,11 @@
 
         .booking-block {
             position: absolute;
-            height: 54px;
-            top: 8px;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 11px;
+            height: 60px;
+            top: 10px;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
             cursor: pointer;
             transition: transform 0.1s, box-shadow 0.2s;
             overflow: hidden;
@@ -376,20 +401,23 @@
         }
 
         .booking-service {
-            font-weight: 600;
+            font-weight: 700;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-size: 15px;
         }
 
         .booking-customer {
-            font-size: 10px;
-            opacity: 0.9;
+            font-size: 13px;
+            opacity: 0.95;
+            margin-top: 2px;
         }
 
         .booking-bed {
-            font-size: 10px;
-            opacity: 0.8;
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 2px;
         }
 
         .block-dianping {
@@ -424,41 +452,43 @@
             gap: 16px;
             margin-top: 16px;
             padding-top: 16px;
-            border-top: 1px solid #e0e0e0;
+            border-top: 2px solid #e0e0e0;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #666;
+            gap: 8px;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
         }
 
         .legend-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 4px;
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
         }
 
         /* Order List */
         .order-list-container {
             background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .order-list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .order-list-header h2 {
-            font-size: 16px;
+            font-size: 20px;
             color: #333;
+            font-weight: 700;
         }
 
         .order-table {
@@ -468,18 +498,19 @@
 
         .order-table th {
             text-align: left;
-            padding: 12px 8px;
+            padding: 16px 12px;
             background: #f8f9fa;
-            font-size: 12px;
-            color: #666;
-            font-weight: 500;
+            font-size: 15px;
+            color: #333;
+            font-weight: 700;
             border-bottom: 2px solid #e0e0e0;
         }
 
         .order-table td {
-            padding: 12px 8px;
+            padding: 16px 12px;
             border-bottom: 1px solid #f0f0f0;
-            font-size: 13px;
+            font-size: 15px;
+            font-weight: 500;
         }
 
         .order-table tr:hover {
@@ -488,10 +519,10 @@
 
         .status-badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .status-pending { background: #fef3c7; color: #92400e; }
@@ -501,10 +532,10 @@
 
         .source-badge {
             display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
         }
 
         .source-dianping { background: #fee2e2; color: #991b1b; }
@@ -513,14 +544,15 @@
 
         .action-buttons {
             display: flex;
-            gap: 6px;
+            gap: 8px;
         }
 
         .action-buttons button {
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
         }
 
@@ -542,7 +574,7 @@
             background: white;
             border-radius: 12px;
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -552,49 +584,58 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
-            border-bottom: 1px solid #e0e0e0;
+            padding: 24px;
+            border-bottom: 2px solid #e0e0e0;
         }
 
         .modal-header h3 {
-            font-size: 18px;
+            font-size: 22px;
             color: #333;
+            font-weight: 700;
         }
 
         .modal-close {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 32px;
             cursor: pointer;
             color: #666;
+            line-height: 1;
         }
 
         .modal-body {
-            padding: 20px;
+            padding: 24px;
         }
 
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
             display: block;
-            font-size: 13px;
-            color: #666;
-            margin-bottom: 6px;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 14px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #667eea;
+            outline: none;
         }
 
         .form-group textarea {
             resize: vertical;
-            min-height: 80px;
+            min-height: 100px;
         }
 
         .form-row {
@@ -608,22 +649,30 @@
 
         .radio-group {
             display: flex;
-            gap: 16px;
+            gap: 20px;
         }
 
         .radio-group label {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 10px;
             cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .radio-group input[type="radio"] {
+            width: 22px;
+            height: 22px;
         }
 
         .availability-check {
             background: #f8f9fa;
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 8px;
-            font-size: 12px;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 12px;
+            font-size: 16px;
+            font-weight: 500;
         }
 
         .availability-check.success {
@@ -640,8 +689,15 @@
             display: flex;
             justify-content: flex-end;
             gap: 12px;
-            padding: 20px;
-            border-top: 1px solid #e0e0e0;
+            padding: 24px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .modal-footer button {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 8px;
         }
 
         /* Add-on Modal */
@@ -1064,16 +1120,16 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>请输入手机号</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="tel" id="checkinPhone" placeholder="请输入客户预留手机号的後 4 位"
+                    <label>请输入手机号后 4 位</label>
+                    <div style="display: flex; gap: 12px;">
+                        <input type="tel" id="checkinPhone" placeholder="输入手机号后 4 位即可搜索"
                                oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                               style="flex: 1; font-size: 16px; padding: 12px; text-align: center; letter-spacing: 2px;">
-                        <button class="btn-primary" onclick="searchOrderByPhone()" style="white-space: nowrap;">搜索</button>
+                               style="flex: 1; font-size: 20px; padding: 16px; text-align: center; letter-spacing: 3px; font-weight: 600;">
+                        <button class="btn-primary" onclick="searchOrderByPhone()" style="white-space: nowrap; padding: 14px 28px;">搜索订单</button>
                     </div>
                 </div>
 
-                <div id="checkinResult" style="margin-top: 16px;"></div>
+                <div id="checkinResult" style="margin-top: 20px;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="closeCheckInModal()">关闭</button>
