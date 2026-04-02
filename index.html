@@ -1232,6 +1232,9 @@
                     auth: {
                         autoRefreshToken: false,
                         persistSession: false
+                    },
+                    db: {
+                        schema: 'public'
                     }
                 });
                 isCloudSync = true;
@@ -1250,9 +1253,13 @@
             try {
                 const { data: existing, error: fetchError } = await supabaseClient
                     .from('orders')
-                    .select('data,date')
+                    .select('*')
                     .eq('date', today)
-                    .single();
+                    .maybeSingle();
+
+                if (fetchError) {
+                    console.error('[Cloud] Fetch error:', fetchError);
+                }
 
                 if (existing) {
                     await supabaseClient
@@ -1284,11 +1291,19 @@
             try {
                 const { data, error } = await supabaseClient
                     .from('orders')
-                    .select('data,date')
+                    .select('*')
                     .eq('date', today)
-                    .single();
+                    .maybeSingle();
 
-                if (error || !data) return false;
+                if (error) {
+                    console.error('[Cloud] Load error:', error);
+                    return false;
+                }
+
+                if (!data) {
+                    console.log('[Cloud] No data in cloud');
+                    return false;
+                }
 
                 const cloudOrders = data.data || [];
                 const localOrders = appData.orders.filter(o => o.date !== today);
