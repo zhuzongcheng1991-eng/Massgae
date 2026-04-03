@@ -1591,26 +1591,29 @@
             }
 
             if (appData.rotationState.lastDate !== today) {
-                // 新的一天，需要找到昨天的最后一个完成订单的技师
+                // 新的一天，需要找到昨天的最后一个订单（不论状态，只要创建了就算）
                 const yesterday = appData.rotationState.lastDate;
                 const yesterdayOrders = appData.orders.filter(o =>
-                    o.date === yesterday && o.status === 'completed'
+                    o.date === yesterday && o.status !== 'cancelled'
                 );
 
                 if (yesterdayOrders.length > 0) {
-                    // 按完成时间排序，找到最后一个
+                    // 按开始时间排序，找到最后一个
                     yesterdayOrders.sort((a, b) => {
-                        const timeA = a.completedAt || a.arrivedAt || '';
-                        const timeB = b.completedAt || b.arrivedAt || '';
+                        const timeA = a.startTime || '';
+                        const timeB = b.startTime || '';
                         return timeA.localeCompare(timeB);
                     });
                     const lastOrder = yesterdayOrders[yesterdayOrders.length - 1];
                     // 计算下一个技师 ID
                     const nextTherapistId = (lastOrder.therapistId % appData.therapists.length) + 1;
                     appData.rotationState.lastTherapistId = nextTherapistId;
+                    console.log('[轮班] 昨天最后一单：技师', lastOrder.therapistId, '→ 今天从', nextTherapistId, '号开始');
+                } else {
+                    // 昨天没有订单，继续从之前的轮班技师开始
+                    console.log('[轮班] 昨天没有订单，今天从', appData.rotationState.lastTherapistId, '号开始');
                 }
                 appData.rotationState.lastDate = today;
-                console.log('[轮班] 新的一天，从', appData.rotationState.lastTherapistId, '号技师开始');
             }
         }
 
