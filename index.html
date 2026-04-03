@@ -2863,15 +2863,19 @@
             const now = new Date();
             const currentMin = now.getHours() * 60 + now.getMinutes();
             const today = getTodayStr();
-            let changed = false;
+            console.log('[自动检查] 当前时间:', currentMin, '分钟，今天:', today);
 
             appData.orders.forEach(order => {
+                console.log('[订单检查]', order.id, '状态:', order.status, '开始:', order.startTime, '结束分钟:', parseTime(order.startTime) + order.duration);
+
                 // 只有已报到的订单，时间到了才能自动完成
                 if (order.date === today && order.status === 'arrived') {
                     const endMin = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
+                    console.log('[自动检查] 订单', order.id, '结束时间:', endMin, '当前:', currentMin, '是否超时:', currentMin >= endMin);
                     if (currentMin >= endMin) {
                         order.status = 'completed';
                         order.completedAt = new Date().toISOString();
+                        console.log('[自动完成] 订单', order.id, '已完成');
                         changed = true;
                     }
                 }
@@ -2880,6 +2884,7 @@
                     const endMin = parseTime(order.startTime) + order.duration + (order.addons || []).reduce((s, a) => s + a.duration, 0);
                     if (currentMin >= endMin && !order.arrivedAt) {
                         order.status = 'expired';
+                        console.log('[自动过期] 订单', order.id);
                         changed = true;
                     }
                 }
@@ -2888,6 +2893,7 @@
             if (changed) {
                 saveData();
                 renderApp();
+                showToast('已自动更新订单状态');
             }
         }
 
