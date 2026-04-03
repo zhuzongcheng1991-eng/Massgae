@@ -1584,7 +1584,7 @@
             const today = getTodayStr();
 
             if (!appData.rotationState.lastDate) {
-                // 第一次使用，从 1 号技师开始
+                // 第一次使用，记录今天，从 1 号技师开始
                 appData.rotationState.lastDate = today;
                 appData.rotationState.lastTherapistId = 1;
                 console.log('[轮班] 首次使用，从 1 号技师开始');
@@ -1592,7 +1592,7 @@
             }
 
             if (appData.rotationState.lastDate !== today) {
-                // 新的一天，需要找到昨天的最后一个**已完成**订单的技师
+                // 新的一天，需要找昨天的最后一个已完成订单来计算起始技师
                 const yesterday = appData.rotationState.lastDate;
                 const yesterdayOrders = appData.orders.filter(o =>
                     o.date === yesterday && o.status === 'completed'
@@ -1603,26 +1603,27 @@
                 if (yesterdayOrders.length > 0) {
                     // 按完成时间排序，找到最后一个
                     yesterdayOrders.sort((a, b) => {
-                        const timeA = a.completedAt || a.arrivedAt || '';
-                        const timeB = b.completedAt || b.arrivedAt || '';
+                        const timeA = a.completedAt || '';
+                        const timeB = b.completedAt || '';
                         return timeA.localeCompare(timeB);
                     });
                     const lastOrder = yesterdayOrders[yesterdayOrders.length - 1];
-                    // 计算下一个技师 ID
-                    const nextTherapistId = (lastOrder.therapistId % appData.therapists.length) + 1;
-                    appData.rotationState.lastTherapistId = nextTherapistId;
-                    console.log('[轮班] 昨天最后一单：技师', lastOrder.therapistId, '→ 今天从', nextTherapistId, '号开始');
+                    // 保存昨天最后一个技师，第二天会从 (lastTherapistId % count) + 1 开始
+                    appData.rotationState.lastTherapistId = lastOrder.therapistId;
+                    console.log('[轮班] 昨天最后一单：技师', lastOrder.therapistId);
                 } else {
-                    // 昨天没有完成的订单，继续从之前的轮班技师开始
-                    console.log('[轮班] 昨天没有已完成订单，今天继续从', appData.rotationState.lastTherapistId, '号开始');
+                    console.log('[轮班] 昨天没有已完成订单，保持从', appData.rotationState.lastTherapistId, '号开始');
                 }
                 appData.rotationState.lastDate = today;
             }
         }
 
         // 获取推荐的起始技师（考虑跨天轮班）
+        // 返回：(lastTherapistId % 技师总数) + 1
         function getStartingTherapistForNewDay() {
-            return appData.rotationState.lastTherapistId || 1;
+            const count = appData.therapists.length;
+            const lastId = appData.rotationState.lastTherapistId || 1;
+            return (lastId % count) + 1;
         }
 
         function showToast(message, type = 'success') {
@@ -2028,16 +2029,18 @@
 
             // Select therapist based on rotation state and order count
             if (availableTherapists.length > 0) {
-                // 如果是当天的第一个订单，从轮班记录的技师开始
+                // 如果是当天的第一个订单，从轮班记录的技师的下一个开始
                 if (dayOrders.length === 0 && appData.rotationState.lastDate === date) {
-                    const startTherapistId = appData.rotationState.lastTherapistId;
+                    const startTherapistId = getStartingTherapistForNewDay();
                     const preferredTherapist = availableTherapists.find(t => t.id === startTherapistId);
                     if (preferredTherapist) {
                         therapistSelect.value = preferredTherapist.id;
+                        console.log('[轮班] 今天是新的一天，从', startTherapistId, '号技师开始');
                     } else {
                         // 如果首选技师不可用，选择订单数最少的
                         availableTherapists.sort((a, b) => therapistOrderCount[a.id] - therapistOrderCount[b.id]);
                         therapistSelect.value = availableTherapists[0].id;
+                        console.log('[轮班] 首选技师不可用，选择', therapistSelect.value, '号技师');
                     }
                 } else {
                     // 否则选择订单数最少的技师
@@ -2267,10 +2270,6 @@
                     createdAt: new Date().toISOString()
                 };
                 appData.orders.push(order);
-                // 更新轮班状态：记录最后分配的技师
-                if (orderDate === getTodayStr()) {
-                    appData.rotationState.lastTherapistId = therapistId;
-                }
                 showToast('订单已创建');
             }
 
