@@ -1514,6 +1514,11 @@
                 bedCount: 5,
                 addonPrice30: 99,
                 addonPrice60: 168
+            },
+            // 跨天轮班记录：保存最后一天的日期和最后一个服务的技师 ID
+            rotationState: {
+                lastDate: null,
+                lastTherapistId: null
             }
         };
 
@@ -1539,6 +1544,13 @@
                         s.commission = Math.round(s.price * 0.3); // Default 30% commission
                     }
                 });
+                // Migrate rotationState if not present
+                if (!appData.rotationState) {
+                    appData.rotationState = {
+                        lastDate: null,
+                        lastTherapistId: null
+                    };
+                }
                 // Migrate old completed orders without arrivedAt to expired
                 const today = getTodayStr();
                 appData.orders.forEach(order => {
@@ -1547,6 +1559,8 @@
                     }
                 });
             }
+            // Check if it's a new day and update rotation state
+            updateRotationState();
             // Initialize Supabase and try to load from cloud
             initSupabase();
             await loadFromCloud();
@@ -1563,6 +1577,46 @@
         function generateOrderId() {
             const num = appData.orders.length + 1;
             return '#' + String(num).padStart(4, '0');
+        }
+
+        // 更新轮班状态：检查是否是新的一天，如果是，从昨天的最后一个技师的下一个开始
+        function updateRotationState() {
+            const today = getTodayStr();
+
+            if (!appData.rotationState.lastDate) {
+                // 第一次使用，从 1 号技师开始
+                appData.rotationState.lastDate = today;
+                appData.rotationState.lastTherapistId = 1;
+                return;
+            }
+
+            if (appData.rotationState.lastDate !== today) {
+                // 新的一天，需要找到昨天的最后一个完成订单的技师
+                const yesterday = appData.rotationState.lastDate;
+                const yesterdayOrders = appData.orders.filter(o =>
+                    o.date === yesterday && o.status === 'completed'
+                );
+
+                if (yesterdayOrders.length > 0) {
+                    // 按完成时间排序，找到最后一个
+                    yesterdayOrders.sort((a, b) => {
+                        const timeA = a.completedAt || a.arrivedAt || '';
+                        const timeB = b.completedAt || b.arrivedAt || '';
+                        return timeA.localeCompare(timeB);
+                    });
+                    const lastOrder = yesterdayOrders[yesterdayOrders.length - 1];
+                    // 计算下一个技师 ID
+                    const nextTherapistId = (lastOrder.therapistId % appData.therapists.length) + 1;
+                    appData.rotationState.lastTherapistId = nextTherapistId;
+                }
+                appData.rotationState.lastDate = today;
+                console.log('[轮班] 新的一天，从', appData.rotationState.lastTherapistId, '号技师开始');
+            }
+        }
+
+        // 获取推荐的起始技师（考虑跨天轮班）
+        function getStartingTherapistForNewDay() {
+            return appData.rotationState.lastTherapistId || 1;
         }
 
         function showToast(message, type = 'success') {
@@ -1951,13 +2005,12 @@
                 }
             });
 
-            // Find available therapists sorted by order count (least first)
+            // Find available therapists
             const availableTherapists = appData.therapists
                 .filter(t => {
                     if (t.status === 'rest') return false;
                     return !checkResourceConflict(t.id, date, timeRange, null, false);
-                })
-                .sort((a, b) => therapistOrderCount[a.id] - therapistOrderCount[b.id]);
+                });
 
             // Find available beds
             const availableBeds = appData.beds.filter(b => {
@@ -1967,9 +2020,24 @@
             const therapistSelect = document.getElementById('therapistSelect');
             const bedSelect = document.getElementById('bedSelect');
 
-            // Select therapist with least orders
+            // Select therapist based on rotation state and order count
             if (availableTherapists.length > 0) {
-                therapistSelect.value = availableTherapists[0].id;
+                // 如果是当天的第一个订单，从轮班记录的技师开始
+                if (dayOrders.length === 0 && appData.rotationState.lastDate === date) {
+                    const startTherapistId = appData.rotationState.lastTherapistId;
+                    const preferredTherapist = availableTherapists.find(t => t.id === startTherapistId);
+                    if (preferredTherapist) {
+                        therapistSelect.value = preferredTherapist.id;
+                    } else {
+                        // 如果首选技师不可用，选择订单数最少的
+                        availableTherapists.sort((a, b) => therapistOrderCount[a.id] - therapistOrderCount[b.id]);
+                        therapistSelect.value = availableTherapists[0].id;
+                    }
+                } else {
+                    // 否则选择订单数最少的技师
+                    availableTherapists.sort((a, b) => therapistOrderCount[a.id] - therapistOrderCount[b.id]);
+                    therapistSelect.value = availableTherapists[0].id;
+                }
             }
 
             // Select first available bed
@@ -2193,6 +2261,10 @@
                     createdAt: new Date().toISOString()
                 };
                 appData.orders.push(order);
+                // 更新轮班状态：记录最后分配的技师
+                if (orderDate === getTodayStr()) {
+                    appData.rotationState.lastTherapistId = therapistId;
+                }
                 showToast('订单已创建');
             }
 
