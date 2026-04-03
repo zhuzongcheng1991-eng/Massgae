@@ -2933,6 +2933,8 @@
                 o.status === 'completed'
             );
 
+            console.log('[工资计算] 开始计算，完成订单数:', filteredOrders.length);
+
             // Create service commission map
             const serviceCommission = {};
             appData.services.forEach(s => {
@@ -2959,19 +2961,22 @@
 
                     // Calculate commission based on service
                     let orderCommission = serviceCommission[order.service] || 0;
+                    const debugInfo = [`订单${order.id}: 基础提成¥${orderCommission}`];
 
                     // Add addon commission - same commission rate as the main service
                     if (order.addons) {
                         const baseCommission = serviceCommission[order.service] || 0;
                         const basePrice = order.price;
-                        order.addons.forEach(addon => {
+                        order.addons.forEach((addon, idx) => {
                             // Calculate addon commission proportionally based on service commission
                             const addonCommission = Math.round(baseCommission * (addon.price / basePrice));
                             orderCommission += addonCommission;
+                            debugInfo.push(`加钟${idx + 1} ¥${addon.price} → 提成¥${addonCommission}`);
                         });
                     }
 
                     therapistSalary[tid].commission += orderCommission;
+                    console.log('[工资计算]', debugInfo.join(', '), `小计¥${orderCommission}`);
                 }
             });
 
@@ -3038,6 +3043,8 @@
                 o.date >= startDate && o.date <= endDate && o.status === 'completed'
             );
 
+            console.log('[工资报表] 导出报表，完成订单数:', filteredOrders.length);
+
             const therapistSalary = {};
             appData.therapists.forEach(t => {
                 therapistSalary[t.id] = {
@@ -3057,19 +3064,24 @@
 
                     // Calculate commission based on service
                     let orderCommission = serviceCommission[order.service] || 0;
+                    const debugInfo = [`订单${order.id}: 基础提成¥${orderCommission}`];
 
                     // Add addon commission - same commission rate as the main service
                     if (order.addons) {
                         const baseCommission = serviceCommission[order.service] || 0;
                         const basePrice = order.price;
-                        order.addons.forEach(addon => {
+                        order.addons.forEach((addon, idx) => {
                             // Calculate addon commission proportionally based on service commission
                             const addonCommission = Math.round(baseCommission * (addon.price / basePrice));
                             orderCommission += addonCommission;
+                            debugInfo.push(`加钟${idx + 1} ¥${addon.price} → 提成¥${addonCommission}`);
                         });
                     }
 
                     therapistSalary[tid].commission += orderCommission;
+                    console.log('[工资报表]', debugInfo.join(', '), `小计¥${orderCommission}`);
+                }
+            });
                 }
             });
 

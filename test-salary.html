@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>工资计算测试</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+        .test-result { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .pass { color: #10b981; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f0f0f0; }
+        .summary { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>💰 工资计算测试</h1>
+    <div id="results"></div>
+
+    <script>
+        // 模拟服务配置（与主系统一致）
+        const services = [
+            { id: 1, name: '足疗 60min', duration: 60, price: 198, commission: 60 },
+            { id: 2, name: '足疗 90min', duration: 90, price: 298, commission: 90 },
+            { id: 3, name: '精油 SPA 60min', duration: 60, price: 268, commission: 80 },
+            { id: 4, name: '精油 SPA 90min', duration: 90, price: 398, commission: 120 },
+            { id: 5, name: '推拿 60min', duration: 60, price: 198, commission: 60 },
+            { id: 6, name: '推拿 90min', duration: 90, price: 298, commission: 90 },
+            { id: 7, name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
+        ];
+
+        // 模拟技师
+        const therapists = [
+            { id: 1, name: '王师傅' },
+            { id: 2, name: '李师傅' },
+            { id: 3, name: '张师傅' },
+            { id: 4, name: '刘师傅' },
+            { id: 5, name: '陈师傅' }
+        ];
+
+        // 模拟测试数据（2026-04-02 的订单）
+        const testOrders = [
+            // 王师傅的订单
+            {
+                id: '#0001',
+                date: '2026-04-02',
+                therapistId: 1,
+                service: '足疗 60min',
+                price: 198,
+                status: 'completed',
+                arrivedAt: '2026-04-02T09:00:00Z',
+                completedAt: '2026-04-02T10:00:00Z',
+                addons: []
+            },
+            {
+                id: '#0002',
+                date: '2026-04-02',
+                therapistId: 1,
+                service: '精油 SPA 60min',
+                price: 268,
+                status: 'completed',
+                arrivedAt: '2026-04-02T10:30:00Z',
+                completedAt: '2026-04-02T11:30:00Z',
+                addons: [
+                    { duration: 30, price: 99 }  // 加钟 30 分钟
+                ]
+            },
+            // 李师傅的订单
+            {
+                id: '#0003',
+                date: '2026-04-02',
+                therapistId: 2,
+                service: '足疗 90min',
+                price: 298,
+                status: 'completed',
+                arrivedAt: '2026-04-02T09:00:00Z',
+                completedAt: '2026-04-02T10:30:00Z',
+                addons: []
+            },
+            {
+                id: '#0004',
+                date: '2026-04-02',
+                therapistId: 2,
+                service: '泰式按摩 90min',
+                price: 368,
+                status: 'completed',
+                arrivedAt: '2026-04-02T11:00:00Z',
+                completedAt: '2026-04-02T12:30:00Z',
+                addons: [
+                    { duration: 60, price: 168 }  // 加钟 60 分钟
+                ]
+            },
+            // 张师傅的订单（只有 1 单）
+            {
+                id: '#0005',
+                date: '2026-04-02',
+                therapistId: 3,
+                service: '推拿 60min',
+                price: 198,
+                status: 'completed',
+                arrivedAt: '2026-04-02T14:00:00Z',
+                completedAt: '2026-04-02T15:00:00Z',
+                addons: []
+            },
+            // 未完成的订单（不应该计入工资）
+            {
+                id: '#0006',
+                date: '2026-04-02',
+                therapistId: 4,
+                service: '足疗 60min',
+                price: 198,
+                status: 'arrived',  // 服务中，未完成
+                arrivedAt: '2026-04-02T15:00:00Z',
+                addons: []
+            },
+            // 已过期的订单（不应该计入工资）
+            {
+                id: '#0007',
+                date: '2026-04-02',
+                therapistId: 4,
+                service: '足疗 60min',
+                price: 198,
+                status: 'expired',  // 已过期
+                addons: []
+            },
+            // 取消的订单（不应该计入工资）
+            {
+                id: '#0008',
+                date: '2026-04-02',
+                therapistId: 5,
+                service: '精油 SPA 60min',
+                price: 268,
+                status: 'cancelled',  // 已取消
+                addons: []
+            }
+        ];
+
+        // 创建服务提成映射
+        const serviceCommission = {};
+        services.forEach(s => {
+            serviceCommission[s.name] = s.commission || 0;
+        });
+
+        // 工资计算函数（与主系统一致）
+        function calculateSalary(orders, therapists, startDate, endDate) {
+            // 过滤已完成订单
+            const filteredOrders = orders.filter(o =>
+                o.date >= startDate &&
+                o.date <= endDate &&
+                o.status === 'completed'
+            );
+
+            // 计算每个技师的工资
+            const therapistSalary = {};
+            therapists.forEach(t => {
+                therapistSalary[t.id] = {
+                    name: t.name,
+                    orderCount: 0,
+                    totalPrice: 0,
+                    commission: 0
+                };
+            });
+
+            filteredOrders.forEach(order => {
+                const tid = order.therapistId;
+                if (therapistSalary[tid]) {
+                    therapistSalary[tid].orderCount++;
+                    const totalAmount = order.price + (order.addons || []).reduce((s, a) => s + a.price, 0);
+                    therapistSalary[tid].totalPrice += totalAmount;
+
+                    // 计算提成
+                    let orderCommission = serviceCommission[order.service] || 0;
+
+                    // 加钟提成（按比例）
+                    if (order.addons) {
+                        const baseCommission = serviceCommission[order.service] || 0;
+                        const basePrice = order.price;
+                        order.addons.forEach(addon => {
+                            const addonCommission = Math.round(baseCommission * (addon.price / basePrice));
+                            orderCommission += addonCommission;
+                        });
+                    }
+
+                    therapistSalary[tid].commission += orderCommission;
+                }
+            });
+
+            return {
+                orders: filteredOrders,
+                salaries: therapistSalary
+            };
+        }
+
+        // 运行测试
+        function runTests() {
+            const results = document.getElementById('results');
+            let html = '';
+
+            // 测试 1: 基本计算
+            const result = calculateSalary(testOrders, therapists, '2026-04-02', '2026-04-02');
+
+            html += '<div class="test-result">';
+            html += '<h2>测试结果 - 2026-04-02</h2>';
+            html += `<div class="summary">有效订单数：${result.orders.length} 单（应排除未完成、已过期、已取消的订单）</div>`;
+
+            html += '<table>';
+            html += '<tr><th>技师</th><th>订单数</th><th>业绩总额</th><th>提成金额</th><th>验证</th></tr>';
+
+            let totalCommission = 0;
+            Object.values(result.salaries).forEach(t => {
+                totalCommission += t.commission;
+                let validation = '';
+
+                // 验证计算
+                if (t.name === '王师傅') {
+                    // 足疗 60min 提成 60 + 精油 SPA 60min 提成 80 + 加钟提成 (80 * 99/268 ≈ 30) = 170
+                    const expected = 60 + 80 + Math.round(80 * (99/268));
+                    validation = Math.abs(t.commission - expected) < 1 ? '<span class="pass">✓ 正确</span>' : `<span class="fail">✗ 应为¥${expected}</span>`;
+                } else if (t.name === '李师傅') {
+                    // 足疗 90min 提成 90 + 泰式 90min 提成 100 + 加钟提成 (100 * 168/368 ≈ 46) = 236
+                    const expected = 90 + 100 + Math.round(100 * (168/368));
+                    validation = Math.abs(t.commission - expected) < 1 ? '<span class="pass">✓ 正确</span>' : `<span class="fail">✗ 应为¥${expected}</span>`;
+                } else if (t.name === '张师傅') {
+                    // 推拿 60min 提成 60
+                    const expected = 60;
+                    validation = t.commission === expected ? '<span class="pass">✓ 正确</span>' : `<span class="fail">✗ 应为¥${expected}</span>`;
+                } else if (t.name === '刘师傅') {
+                    // 没有完成的订单，应为 0
+                    validation = t.commission === 0 ? '<span class="pass">✓ 正确 (无完成订单)</span>' : `<span class="fail">✗ 应为¥0</span>`;
+                } else if (t.name === '陈师傅') {
+                    // 订单已取消，应为 0
+                    validation = t.commission === 0 ? '<span class="pass">✓ 正确 (订单已取消)</span>' : `<span class="fail">✗ 应为¥0</span>`;
+                }
+
+                html += `<tr>
+                    <td>${t.name}</td>
+                    <td>${t.orderCount}</td>
+                    <td>¥${t.totalPrice.toLocaleString()}</td>
+                    <td>¥${t.commission.toLocaleString()}</td>
+                    <td>${validation}</td>
+                </tr>`;
+            });
+
+            html += `<tr style="background:#f0f9ff;"><td><strong>总计</strong></td><td>${result.orders.length}</td><td>-</td><td><strong>¥${totalCommission.toLocaleString()}</strong></td><td></td></tr>`;
+            html += '</table>';
+            html += '</div>';
+
+            // 测试 2: 详细订单分析
+            html += '<div class="test-result">';
+            html += '<h3>订单详情分析</h3>';
+            html += '<table><tr><th>订单号</th><th>技师</th><th>服务</th><th>价格</th><th>加钟</th><th>提成计算</th></tr>';
+
+            result.orders.forEach(order => {
+                const baseComm = serviceCommission[order.service];
+                let addonComm = 0;
+                let addonDetail = '无';
+
+                if (order.addons && order.addons.length > 0) {
+                    addonDetail = order.addons.map(a => `+¥${a.price}`).join(' ');
+                    const basePrice = order.price;
+                    order.addons.forEach(addon => {
+                        addonComm += Math.round(baseComm * (addon.price / basePrice));
+                    });
+                }
+
+                const totalCommission = baseComm + addonComm;
+
+                html += `<tr>
+                    <td>${order.id}</td>
+                    <td>${therapists.find(t => t.id === order.therapistId).name}</td>
+                    <td>${order.service}</td>
+                    <td>¥${order.price}</td>
+                    <td>${addonDetail}</td>
+                    <td>¥${baseComm} ${addonComm > 0 ? '+ ¥' + addonComm + '(加钟)' : ''} = <strong>¥${totalCommission}</strong></td>
+                </tr>`;
+            });
+
+            html += '</table></div>';
+
+            // 测试 3: 边界情况
+            html += '<div class="test-result">';
+            html += '<h3>边界情况测试</h3>';
+
+            const tests = [
+                {
+                    name: '空日期范围',
+                    result: calculateSalary(testOrders, therapists, '', ''),
+                    pass: true
+                },
+                {
+                    name: '未来日期（无订单）',
+                    result: calculateSalary(testOrders, therapists, '2099-01-01', '2099-01-31'),
+                    pass: Object.values(result.salaries).every(t => t.orderCount === 0)
+                },
+                {
+                    name: '只统计未完成订单',
+                    result: calculateSalary(
+                        testOrders.filter(o => o.status !== 'completed'),
+                        therapists,
+                        '2026-04-02',
+                        '2026-04-02'
+                    ),
+                    pass: Object.values(result.salaries).every(t => t.commission === 0)
+                }
+            ];
+
+            html += '<table><tr><th>测试项</th><th>结果</th></tr>';
+            tests.forEach(test => {
+                const isPass = test.name === '空日期范围' ? true :
+                              test.name === '未来日期（无订单）' ?
+                                  Object.values(test.result.salaries).every(t => t.orderCount === 0) :
+                              test.name === '只统计未完成订单' ?
+                                  Object.values(test.result.salaries).every(t => t.commission === 0) : false;
+                html += `<tr>
+                    <td>${test.name}</td>
+                    <td>${isPass ? '<span class="pass">✓ 通过</span>' : '<span class="fail">✗ 失败</span>'}</td>
+                </tr>`;
+            });
+            html += '</table></div>';
+
+            results.innerHTML = html;
+        }
+
+        // 运行测试
+        runTests();
+    </script>
+</body>
+</html>
