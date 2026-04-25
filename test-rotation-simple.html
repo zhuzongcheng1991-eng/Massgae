@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>轮班逻辑简化测试</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 900px; margin: 0 auto; }
+        .pass { color: #10b981; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f0f0f0; font-weight: 600; }
+        tr:hover { background: #f9f9f9; }
+        .day-row { background: #e0f2fe; }
+        .result { margin: 15px 0; padding: 15px; background: #f0fdf4; border-radius: 6px; border-left: 4px solid #10b981; }
+        .result.fail { background: #fef2f2; border-left-color: #ef4444; }
+        .formula { font-family: monospace; background: #fef3c7; padding: 8px 12px; border-radius: 4px; display: inline-block; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 技师轮班逻辑测试</h1>
+        <p>验证：每天的第一单是否从"前一天最后一单的下一个技师"开始</p>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const therapists = [
+            { id: 1, name: '王师傅' },
+            { id: 2, name: '李师傅' },
+            { id: 3, name: '张师傅' },
+            { id: 4, name: '刘师傅' },
+            { id: 5, name: '陈师傅' }
+        ];
+
+        // 模拟 3 月 30 日 -4 月 7 日 的订单数据
+        const orders = [
+            // 3/30 - 5 单，最后是 5 号
+            { date: '2026-03-30', therapistId: 1, status: 'completed', completedAt: '2026-03-30T10:00:00Z' },
+            { date: '2026-03-30', therapistId: 2, status: 'completed', completedAt: '2026-03-30T11:30:00Z' },
+            { date: '2026-03-30', therapistId: 3, status: 'completed', completedAt: '2026-03-30T14:00:00Z' },
+            { date: '2026-03-30', therapistId: 4, status: 'completed', completedAt: '2026-03-30T15:30:00Z' },
+            { date: '2026-03-30', therapistId: 5, status: 'completed', completedAt: '2026-03-30T17:00:00Z' },
+
+            // 3/31 - 3 单，最后是 3 号
+            { date: '2026-03-31', therapistId: 1, status: 'completed', completedAt: '2026-03-31T10:00:00Z' },
+            { date: '2026-03-31', therapistId: 2, status: 'completed', completedAt: '2026-03-31T11:30:00Z' },
+            { date: '2026-03-31', therapistId: 3, status: 'completed', completedAt: '2026-03-31T14:00:00Z' },
+
+            // 4/1 - 4 单，最后是 2 号
+            { date: '2026-04-01', therapistId: 4, status: 'completed', completedAt: '2026-04-01T10:00:00Z' },
+            { date: '2026-04-01', therapistId: 5, status: 'completed', completedAt: '2026-04-01T11:30:00Z' },
+            { date: '2026-04-01', therapistId: 1, status: 'completed', completedAt: '2026-04-01T14:00:00Z' },
+            { date: '2026-04-01', therapistId: 2, status: 'completed', completedAt: '2026-04-01T15:30:00Z' },
+
+            // 4/2 - 2 单，最后是 4 号
+            { date: '2026-04-02', therapistId: 3, status: 'completed', completedAt: '2026-04-02T10:00:00Z' },
+            { date: '2026-04-02', therapistId: 4, status: 'completed', completedAt: '2026-04-02T11:30:00Z' },
+
+            // 4/3 - 6 单，最后是 5 号
+            { date: '2026-04-03', therapistId: 5, status: 'completed', completedAt: '2026-04-03T10:00:00Z' },
+            { date: '2026-04-03', therapistId: 1, status: 'completed', completedAt: '2026-04-03T11:30:00Z' },
+            { date: '2026-04-03', therapistId: 2, status: 'completed', completedAt: '2026-04-03T14:00:00Z' },
+            { date: '2026-04-03', therapistId: 3, status: 'completed', completedAt: '2026-04-03T15:30:00Z' },
+            { date: '2026-04-03', therapistId: 4, status: 'completed', completedAt: '2026-04-03T17:00:00Z' },
+            { date: '2026-04-03', therapistId: 5, status: 'completed', completedAt: '2026-04-03T18:30:00Z' },
+
+            // 4/4 - 无订单（休息日）
+            // 4/5 - 无订单（休息日）
+
+            // 4/6 - 3 单，最后是 3 号
+            { date: '2026-04-06', therapistId: 1, status: 'completed', completedAt: '2026-04-06T10:00:00Z' },
+            { date: '2026-04-06', therapistId: 2, status: 'completed', completedAt: '2026-04-06T11:30:00Z' },
+            { date: '2026-04-06', therapistId: 3, status: 'completed', completedAt: '2026-04-06T14:00:00Z' },
+
+            // 4/7 - 1 单，最后是 4 号
+            { date: '2026-04-07', therapistId: 4, status: 'completed', completedAt: '2026-04-07T10:00:00Z' }
+        ];
+
+        // 按日期分组
+        const ordersByDate = {};
+        orders.forEach(o => {
+            if (!ordersByDate[o.date]) ordersByDate[o.date] = [];
+            ordersByDate[o.date].push(o);
+        });
+
+        // 排序每天的订单
+        Object.keys(ordersByDate).forEach(date => {
+            ordersByDate[date].sort((a, b) => a.completedAt.localeCompare(b.completedAt));
+        });
+
+        // 轮班状态
+        let rotationState = { lastDate: null, lastTherapistId: null };
+
+        // 更新轮班状态（与主系统一致）
+        function updateRotationStateForDate(targetDate) {
+            if (!rotationState.lastDate) {
+                rotationState.lastDate = targetDate;
+                rotationState.lastTherapistId = 1;
+                return;
+            }
+
+            if (rotationState.lastDate === targetDate) {
+                return;
+            }
+
+            // 找目标日期之前的所有已完成订单
+            const pastOrders = orders.filter(o => o.date < targetDate && o.status === 'completed');
+
+            if (pastOrders.length === 0) {
+                rotationState.lastTherapistId = 1;
+                rotationState.lastDate = targetDate;
+                return;
+            }
+
+            // 排序找最后一个
+            pastOrders.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return (a.completedAt || '').localeCompare(b.completedAt || '');
+            });
+
+            const lastOrder = pastOrders[pastOrders.length - 1];
+
+            // 检查是否有更新的完成订单
+            const ordersAfterLastDate = orders.filter(o =>
+                o.date >= rotationState.lastDate &&
+                o.date < targetDate &&
+                o.status === 'completed'
+            );
+
+            if (ordersAfterLastDate.length > 0) {
+                ordersAfterLastDate.sort((a, b) => {
+                    const dateCompare = a.date.localeCompare(b.date);
+                    if (dateCompare !== 0) return dateCompare;
+                    return (a.completedAt || '').localeCompare(b.completedAt || '');
+                });
+                const latestOrder = ordersAfterLastDate[ordersAfterLastDate.length - 1];
+                rotationState.lastTherapistId = latestOrder.therapistId;
+            }
+
+            rotationState.lastDate = targetDate;
+        }
+
+        function getStartingTherapistForNewDay() {
+            const count = therapists.length;
+            const lastId = rotationState.lastTherapistId || 1;
+            return (lastId % count) + 1;
+        }
+
+        function runTest() {
+            const dates = ['2026-03-30', '2026-03-31', '2026-04-01', '2026-04-02', '2026-04-03', '2026-04-04', '2026-04-05', '2026-04-06', '2026-04-07', '2026-04-08'];
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+            let html = '';
+            let allPassed = true;
+            let prevLastTherapistId = null;
+
+            html += '<table>';
+            html += '<tr><th>日期</th><th>星期</th><th>订单</th><th>当天最后技师</th><th>次日应推荐</th><th>实际推荐</th><th>结果</th></tr>';
+
+            dates.forEach((date, index) => {
+                const dayOrders = ordersByDate[date] || [];
+                const dayOfWeek = weekDays[new Date(date).getDay()];
+
+                // 更新轮班状态
+                updateRotationStateForDate(date);
+                const startId = getStartingTherapistForNewDay();
+                const startTherapist = therapists.find(t => t.id === startId);
+
+                // 计算当天最后技师
+                let lastTherapistId = null;
+                let lastTherapistName = '-';
+                if (dayOrders.length > 0) {
+                    const lastOrder = dayOrders[dayOrders.length - 1];
+                    lastTherapistId = lastOrder.therapistId;
+                    lastTherapistName = therapists.find(t => t.id === lastTherapistId).name;
+                }
+
+                // 计算期望的次日推荐
+                let expectedNextId;
+                if (lastTherapistId !== null) {
+                    expectedNextId = (lastTherapistId % 5) + 1;
+                } else {
+                    // 当天无订单，次日应该从上一个有订单的日期的最后一个技师的下一个开始
+                    // 这里简化处理：如果有 prevLastTherapistId，就用它计算
+                    expectedNextId = (prevLastTherapistId !== null) ? (prevLastTherapistId % 5) + 1 : 1;
+                }
+
+                // 验证
+                const isCorrect = (dayOrders.length === 0) || (startId === expectedNextId);
+                const displayCorrect = dayOrders.length === 0 ? '-' : (isCorrect ? '✓' : '✗');
+
+                if (dayOrders.length > 0 && !isCorrect) allPassed = false;
+
+                // 更新 prevLastTherapistId
+                if (lastTherapistId !== null) {
+                    prevLastTherapistId = lastTherapistId;
+                }
+
+                html += `<tr class="${dayOrders.length > 0 ? '' : 'day-row'}">
+                    <td>${date}</td>
+                    <td>${dayOfWeek}</td>
+                    <td>${dayOrders.length > 0 ? dayOrders.length + '单' : '无订单'}</td>
+                    <td>${lastTherapistName}</td>
+                    <td>${expectedNextId}号 ${therapists.find(t => t.id === expectedNextId).name}</td>
+                    <td>${startId}号 ${startTherapist.name}</td>
+                    <td>${displayCorrect}</td>
+                </tr>`;
+            });
+
+            html += '</table>';
+
+            html += `<div class="result ${allPassed ? '' : 'fail'}">`;
+            html += '<strong>测试结果：</strong>';
+            html += allPassed ? '<span class="pass">✓ 所有日期的轮班逻辑都正确！</span>' : '<span class="fail">✗ 部分日期的轮班逻辑有误</span>';
+            html += '</div>';
+
+            // 显示详细分析
+            html += '<h3>详细分析</h3>';
+            html += '<p>轮班规则：每天的第一单从"前一天最后一单的下一个技师"开始</p>';
+            html += '<p>公式：<span class="formula">(lastTherapistId % 5) + 1</span></p>';
+
+            html += '<h3>示例验证</h3>';
+            html += '<ul>';
+            html += '<li>3/30 最后是 5 号 → 3/31 应从 (5%5)+1=1 号 开始</li>';
+            html += '<li>3/31 最后是 3 号 → 4/1 应从 (3%5)+1=4 号 开始</li>';
+            html += '<li>4/1 最后是 2 号 → 4/2 应从 (2%5)+1=3 号 开始</li>';
+            html += '<li>4/2 最后是 4 号 → 4/3 应从 (4%5)+1=5 号 开始</li>';
+            html += '<li>4/3 最后是 5 号 → 4/6 应从 (5%5)+1=1 号 开始（跳过休息日）</li>';
+            html += '<li>4/6 最后是 3 号 → 4/7 应从 (3%5)+1=4 号 开始</li>';
+            html += '<li>4/7 最后是 4 号 → 4/8 应从 (4%5)+1=5 号 开始</li>';
+            html += '</ul>';
+
+            document.getElementById('results').innerHTML = html;
+        }
+
+        runTest();
+    </script>
+</body>
+</html>

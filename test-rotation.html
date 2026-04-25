@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>技师轮班测试</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+        .test-result { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .pass { color: #10b981; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f0f0f0; }
+        .scenario { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .formula { background: #fef3c7; padding: 10px; border-radius: 6px; font-family: monospace; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🔄 技师轮班逻辑测试</h1>
+    <div id="results"></div>
+
+    <script>
+        // 模拟技师（5 个）
+        const therapists = [
+            { id: 1, name: '王师傅' },
+            { id: 2, name: '李师傅' },
+            { id: 3, name: '张师傅' },
+            { id: 4, name: '刘师傅' },
+            { id: 5, name: '陈师傅' }
+        ];
+
+        // 模拟测试数据
+        const testOrders = [
+            // 4 月 1 日的订单（已完成）
+            { id: '#0001', date: '2026-04-01', therapistId: 1, status: 'completed', completedAt: '2026-04-01T10:00:00Z' },
+            { id: '#0002', date: '2026-04-01', therapistId: 2, status: 'completed', completedAt: '2026-04-01T11:00:00Z' },
+            { id: '#0003', date: '2026-04-01', therapistId: 3, status: 'completed', completedAt: '2026-04-01T14:00:00Z' },
+
+            // 4 月 2 日的订单（已完成）
+            { id: '#0004', date: '2026-04-02', therapistId: 4, status: 'completed', completedAt: '2026-04-02T10:00:00Z' },
+            { id: '#0005', date: '2026-04-02', therapistId: 5, status: 'completed', completedAt: '2026-04-02T11:00:00Z' },
+            { id: '#0006', date: '2026-04-02', therapistId: 1, status: 'completed', completedAt: '2026-04-02T15:00:00Z' },
+
+            // 4 月 3 日的订单（部分完成，部分未完成）
+            { id: '#0007', date: '2026-04-03', therapistId: 2, status: 'completed', completedAt: '2026-04-03T10:00:00Z' },
+            { id: '#0008', date: '2026-04-03', therapistId: 3, status: 'arrived' }, // 服务中
+            { id: '#0009', date: '2026-04-03', therapistId: 4, status: 'pending' }, // 待服务
+
+            // 已取消的订单（不应计入）
+            { id: '#0010', date: '2026-04-03', therapistId: 5, status: 'cancelled' }
+        ];
+
+        // 轮班状态
+        let rotationState = {
+            lastDate: null,
+            lastTherapistId: null
+        };
+
+        // 更新轮班状态：找出目标日期的"前一天"的最后一个已完成订单
+        // 这样第二天就能从下一个技师开始，实现公平轮班
+        function updateRotationStateForDate(targetDate) {
+            // 如果还没有 rotationState，初始化
+            if (!rotationState.lastDate) {
+                rotationState.lastDate = targetDate;
+                rotationState.lastTherapistId = 1;
+                console.log('初始化，从 1 号技师开始');
+                return;
+            }
+
+            // 如果目标日期就是已记录的日期，说明已经计算过，不需要重新计算
+            if (rotationState.lastDate === targetDate) {
+                return;
+            }
+
+            // 找目标日期之前（不包括目标日期）的所有已完成订单
+            const pastOrders = testOrders.filter(o =>
+                o.date < targetDate && o.status === 'completed'
+            );
+
+            if (pastOrders.length === 0) {
+                // 没有任何历史完成订单，从 1 号开始
+                rotationState.lastTherapistId = 1;
+                rotationState.lastDate = targetDate;
+                console.log('无历史订单，从 1 号技师开始');
+                return;
+            }
+
+            // 按日期和完成时间排序，找到最后一个完成的订单
+            pastOrders.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                const timeA = a.completedAt || '';
+                const timeB = b.completedAt || '';
+                return timeA.localeCompare(timeB);
+            });
+
+            const lastOrder = pastOrders[pastOrders.length - 1];
+            rotationState.lastTherapistId = lastOrder.therapistId;
+            rotationState.lastDate = targetDate;
+
+            console.log('上次最后一单：', lastOrder.date, '技师', lastOrder.therapistId,
+                '→ 今天应从', getStartingTherapistForNewDay(), '号开始');
+        }
+
+        // 获取推荐的起始技师
+        function getStartingTherapistForNewDay() {
+            const count = therapists.length;
+            const lastId = rotationState.lastTherapistId || 1;
+            return (lastId % count) + 1;
+        }
+
+        // 运行测试
+        function runTests() {
+            const results = document.getElementById('results');
+            let html = '';
+
+            // 测试场景 1: 4 月 2 日第一单
+            html += '<div class="scenario">';
+            html += '<h2>场景 1: 4 月 2 日创建第一个订单</h2>';
+            html += '<p>4 月 1 日最后一单是 <strong>3 号技师（张师傅）</strong></p>';
+
+            rotationState = { lastDate: null, lastTherapistId: null };
+            updateRotationStateForDate('2026-04-02');
+            const startId1 = getStartingTherapistForNewDay();
+            const therapist1 = therapists.find(t => t.id === startId1);
+
+            html += '<div class="formula">公式：(' + rotationState.lastTherapistId + ' % ' + therapists.length + ') + 1 = ' + startId1 + '</div>';
+            html += '<p>推荐技师：<strong>' + therapist1.name + '</strong> ';
+            html += startId1 === 4 ? '<span class="pass">✓ 正确（应该是 4 号刘师傅）</span>' : '<span class="fail">✗ 错误（应该是 4 号刘师傅）</span>';
+            html += '</p></div>';
+
+            // 测试场景 2: 4 月 3 日第一单
+            html += '<div class="scenario">';
+            html += '<h2>场景 2: 4 月 3 日创建第一个订单</h2>';
+            html += '<p>4 月 2 日最后一单是 <strong>1 号技师（王师傅）</strong></p>';
+
+            rotationState = { lastDate: null, lastTherapistId: null };
+            updateRotationStateForDate('2026-04-03');
+            const startId2 = getStartingTherapistForNewDay();
+            const therapist2 = therapists.find(t => t.id === startId2);
+
+            html += '<div class="formula">公式：(' + rotationState.lastTherapistId + ' % ' + therapists.length + ') + 1 = ' + startId2 + '</div>';
+            html += '<p>推荐技师：<strong>' + therapist2.name + '</strong> ';
+            html += startId2 === 2 ? '<span class="pass">✓ 正确（应该是 2 号李师傅）</span>' : '<span class="fail">✗ 错误（应该是 2 号李师傅）</span>';
+            html += '</p></div>';
+
+            // 测试场景 3: 4 月 4 日第一单
+            html += '<div class="scenario">';
+            html += '<h2>场景 3: 4 月 4 日创建第一个订单</h2>';
+            html += '<p>4 月 3 日已完成的最后一单是 <strong>2 号技师（李师傅）</strong></p>';
+
+            rotationState = { lastDate: null, lastTherapistId: null };
+            updateRotationStateForDate('2026-04-04');
+            const startId3 = getStartingTherapistForNewDay();
+            const therapist3 = therapists.find(t => t.id === startId3);
+
+            html += '<div class="formula">公式：(' + rotationState.lastTherapistId + ' % ' + therapists.length + ') + 1 = ' + startId3 + '</div>';
+            html += '<p>推荐技师：<strong>' + therapist3.name + '</strong> ';
+            html += startId3 === 3 ? '<span class="pass">✓ 正确（应该是 3 号张师傅）</span>' : '<span class="fail">✗ 错误（应该是 3 号张师傅）</span>';
+            html += '</p></div>';
+
+            // 测试场景 4: 边界情况 - 5 号技师的下一位
+            html += '<div class="scenario">';
+            html += '<h2>场景 4: 边界测试 - 最后一个技师是 5 号</h2>';
+            html += '<p>如果最后完成的是 <strong>5 号技师（陈师傅）</strong>，下一位应该回到 1 号</p>';
+
+            rotationState = { lastDate: '2026-04-04', lastTherapistId: 5 };
+            const startId4 = getStartingTherapistForNewDay();
+            const therapist4 = therapists.find(t => t.id === startId4);
+
+            html += '<div class="formula">公式：(' + rotationState.lastTherapistId + ' % ' + therapists.length + ') + 1 = ' + startId4 + '</div>';
+            html += '<p>推荐技师：<strong>' + therapist4.name + '</strong> ';
+            html += startId4 === 1 ? '<span class="pass">✓ 正确（循环回到 1 号王师傅）</span>' : '<span class="fail">✗ 错误（应该是 1 号王师傅）</span>';
+            html += '</p></div>';
+
+            // 测试场景 5: 无历史订单
+            html += '<div class="scenario">';
+            html += '<h2>场景 5: 系统第一次使用（无历史订单）</h2>';
+
+            rotationState = { lastDate: null, lastTherapistId: null };
+            updateRotationStateForDate('2026-04-01');
+            const startId5 = getStartingTherapistForNewDay();
+            const therapist5 = therapists.find(t => t.id === startId5);
+
+            html += '<div class="formula">默认从 1 号技师开始</div>';
+            html += '<p>推荐技师：<strong>' + therapist5.name + '</strong> ';
+            html += startId5 === 1 ? '<span class="pass">✓ 正确</span>' : '<span class="fail">✗ 错误</span>';
+            html += '</p></div>';
+
+            // 详细订单列表
+            html += '<div class="test-result">';
+            html += '<h2>所有测试订单</h2>';
+            html += '<table>';
+            html += '<tr><th>订单号</th><th>日期</th><th>技师</th><th>状态</th><th>完成时间</th></tr>';
+
+            testOrders.forEach(order => {
+                const therapist = therapists.find(t => t.id === order.therapistId);
+                const statusNames = {
+                    'completed': '已完成',
+                    'arrived': '服务中',
+                    'pending': '待服务',
+                    'cancelled': '已取消'
+                };
+                html += '<tr>';
+                html += '<td>' + order.id + '</td>';
+                html += '<td>' + order.date + '</td>';
+                html += '<td>' + therapist.name + '</td>';
+                html += '<td>' + statusNames[order.status] + '</td>';
+                html += '<td>' + (order.completedAt || '-') + '</td>';
+                html += '</tr>';
+            });
+
+            html += '</table></div>';
+
+            // 轮班顺序总结
+            html += '<div class="test-result">';
+            html += '<h2>轮班顺序总结</h2>';
+            html += '<p>根据上述订单数据，技师轮班顺序应该是：</p>';
+            html += '<table><tr><th>日期</th><th>第一单推荐</th><th>前一天最后一单</th></tr>';
+            html += '<tr><td>4 月 1 日</td><td>1 号 王师傅 (默认)</td><td>-</td></tr>';
+            html += '<tr><td>4 月 2 日</td><td>4 号 刘师傅</td><td>3 号 张师傅</td></tr>';
+            html += '<tr><td>4 月 3 日</td><td>2 号 李师傅</td><td>1 号 王师傅</td></tr>';
+            html += '<tr><td>4 月 4 日</td><td>3 号 张师傅</td><td>2 号 李师傅</td></tr>';
+            html += '</table>';
+            html += '</div>';
+
+            results.innerHTML = html;
+        }
+
+        runTests();
+    </script>
+</body>
+</html>

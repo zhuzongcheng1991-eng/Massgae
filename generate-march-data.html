@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>3 月数据生成器</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+        .container { background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: 0 auto; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .log { background: #1e1e1e; color: #0f0; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 13px; max-height: 400px; overflow-y: auto; margin-top: 20px; white-space: pre-wrap; word-break: break-all; }
+        .stats { background: #e0f2fe; padding: 15px; border-radius: 6px; margin: 15px 0; }
+        .progress { height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 15px 0; }
+        .progress-bar { height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 3 月数据生成器</h1>
+        <p>生成 2026 年 3 月 1 日 -3 月 31 日 的模拟订单数据</p>
+
+        <div class="stats" id="stats" style="display:none;"></div>
+        <div class="progress" style="display:none;" id="progressContainer">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <button onclick="generateData()">🚀 生成数据</button>
+        <button onclick="clearData()" style="background: #ef4444;">🗑️ 清空数据</button>
+        <button onclick="exportData()" style="background: #10b981;">📥 导出数据</button>
+
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const services = [
+            { name: '足疗 60min', duration: 60, price: 198, commission: 60 },
+            { name: '足疗 90min', duration: 90, price: 298, commission: 90 },
+            { name: '精油 SPA 60min', duration: 60, price: 268, commission: 80 },
+            { name: '精油 SPA 90min', duration: 90, price: 398, commission: 120 },
+            { name: '推拿 60min', duration: 60, price: 198, commission: 60 },
+            { name: '推拿 90min', duration: 90, price: 298, commission: 90 },
+            { name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
+        ];
+
+        const therapists = [
+            { id: 1, name: '王师傅' },
+            { id: 2, name: '李师傅' },
+            { id: 3, name: '张师傅' },
+            { id: 4, name: '刘师傅' },
+            { id: 5, name: '陈师傅' }
+        ];
+
+        const beds = [
+            { id: 1, name: '1 号床' },
+            { id: 2, name: '2 号床' },
+            { id: 3, name: '3 号床' },
+            { id: 4, name: '4 号床' },
+            { id: 5, name: '5 号床' }
+        ];
+
+        const sources = ['dianping', 'phone', 'wechat'];
+        const sourceNames = { dianping: '大众点评', phone: '电话预约', wechat: '微信预约' };
+
+        const customerNames = ['张先生', '李女士', '王先生', '刘女士', '陈先生', '赵女士', '孙先生', '周女士', '吴先生', '郑女士', '马先生', '朱女士', '胡先生', '高女士', '林先生'];
+
+        let currentTherapistIndex = 0; // 轮班索引
+        let orders = [];
+        let orderIdCounter = 1;
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent += message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function generateOrderId() {
+            return '#' + String(orderIdCounter++).padStart(4, '0');
+        }
+
+        function getRandomTime(startHour, endHour) {
+            const hour = Math.floor(Math.random() * (endHour - startHour + 1)) + startHour;
+            const minuteOptions = [0, 10, 20, 30, 40, 50];
+            const minute = minuteOptions[Math.floor(Math.random() * minuteOptions.length)];
+            return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        }
+
+        function generateOrdersForDay(date, dayOfWeek) {
+            const dayOrders = [];
+
+            // 根据星期几决定订单数量（周末多一些）
+            let orderCount;
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                // 周末：6-10 单
+                orderCount = Math.floor(Math.random() * 5) + 6;
+            } else {
+                // 工作日：3-7 单
+                orderCount = Math.floor(Math.random() * 5) + 3;
+            }
+
+            // 营业时间 9:00-21:00
+            const availableSlots = [];
+            for (let hour = 9; hour <= 20; hour++) {
+                for (let minute of [0, 10, 20, 30, 40, 50]) {
+                    availableSlots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+                }
+            }
+
+            // 为每个订单分配时间和技师
+            const therapistSchedule = {}; // { therapistId: endTime }
+            therapists.forEach(t => therapistSchedule[t.id] = 9 * 60); // 初始 9:00
+
+            for (let i = 0; i < orderCount; i++) {
+                // 按轮班顺序选择技师
+                const therapist = therapists[currentTherapistIndex];
+                currentTherapistIndex = (currentTherapistIndex + 1) % therapists.length;
+
+                // 找技师的可用时间
+                const service = services[Math.floor(Math.random() * services.length)];
+                const duration = service.duration;
+
+                // 找可用时间段
+                const startMin = therapistSchedule[therapist.id];
+                if (startMin >= 21 * 60) continue; // 技师今天已满
+
+                const startTime = `${String(Math.floor(startMin / 60)).padStart(2, '0')}:${String(startMin % 60).padStart(2, '0')}`;
+                const endMin = startMin + duration;
+
+                // 更新技师可用时间
+                therapistSchedule[therapist.id] = endMin + 30; // 休息 30 分钟
+
+                // 床号（简单分配）
+                const bedId = (i % beds.length) + 1;
+
+                // 订单状态（大部分完成）
+                let status = 'completed';
+                const completedAt = `${date}T${String(Math.floor((startMin + duration) / 60)).padStart(2, '0')}:${String((startMin + duration) % 60).padStart(2, '0')}:00Z`;
+
+                // 5% 的概率是加钟
+                const addons = Math.random() < 0.05 ? [
+                    { duration: 30, price: 99 }
+                ] : [];
+
+                const order = {
+                    id: generateOrderId(),
+                    source: sources[Math.floor(Math.random() * sources.length)],
+                    customerName: customerNames[Math.floor(Math.random() * customerNames.length)],
+                    customerPhone: '138****' + String(Math.floor(Math.random() * 9000) + 1000),
+                    service: service.name,
+                    date: date,
+                    startTime: startTime,
+                    duration: duration,
+                    price: service.price + addons.reduce((s, a) => s + a.price, 0),
+                    therapistId: therapist.id,
+                    bedId: bedId,
+                    notes: '',
+                    status: status,
+                    addons: addons,
+                    arrivedAt: `${date}T${String(Math.floor(startMin / 60)).padStart(2, '0')}:${String(startMin % 60).padStart(2, '0')}:00Z`,
+                    completedAt: completedAt
+                };
+
+                dayOrders.push(order);
+            }
+
+            return dayOrders;
+        }
+
+        function generateData() {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent = '';
+            orders = [];
+            orderIdCounter = 1;
+            currentTherapistIndex = 0;
+
+            document.getElementById('progressContainer').style.display = 'block';
+            document.getElementById('stats').style.display = 'none';
+
+            // 获取当前 localStorage 中的数据
+            const existingData = localStorage.getItem('massageShopData');
+            let appData = existingData ? JSON.parse(existingData) : null;
+
+            const startDate = '2026-03-01';
+            const endDate = '2026-03-31';
+
+            let currentDate = new Date(startDate);
+            let totalDays = 31;
+            let dayCount = 0;
+
+            const interval = setInterval(() => {
+                if (dayCount >= totalDays) {
+                    clearInterval(interval);
+
+                    // 保存数据
+                    if (appData) {
+                        appData.orders = [...(appData.orders || []), ...orders];
+                    } else {
+                        appData = {
+                            orders: orders,
+                            therapists: therapists,
+                            beds: beds,
+                            settings: {
+                                restStartTime: '13:00',
+                                restEndTime: '14:00',
+                                restDuration: 60,
+                                addonPrice30: 99,
+                                addonPrice60: 168
+                            },
+                            rotationState: {
+                                lastDate: endDate,
+                                lastTherapistId: currentTherapistIndex + 1
+                            }
+                        };
+                    }
+
+                    localStorage.setItem('massageShopData', JSON.stringify(appData));
+
+                    // 显示统计
+                    showStats();
+                    log('✅ 数据生成完成！请刷新主页面查看。');
+                    return;
+                }
+
+                const dateStr = currentDate.toISOString().split('T')[0];
+                const dayOfWeek = currentDate.getDay();
+
+                const dayOrders = generateOrdersForDay(dateStr, dayOfWeek);
+                orders.push(...dayOrders);
+
+                dayCount++;
+                currentDate.setDate(currentDate.getDate() + 1);
+
+                // 更新进度条
+                const progress = (dayCount / totalDays) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+                log(`已生成 ${dateStr} (${['日', '一', '二', '三', '四', '五', '六'][dayOfWeek]}) - ${dayOrders.length} 单`);
+            }, 50);
+        }
+
+        function showStats() {
+            const marchOrders = orders.filter(o => o.date >= '2026-03-01' && o.date <= '2026-03-31');
+            const completedOrders = marchOrders.filter(o => o.status === 'completed');
+            const totalRevenue = completedOrders.reduce((sum, o) => sum + o.price, 0);
+            const totalCommission = completedOrders.reduce((sum, o) => {
+                const service = services.find(s => s.name === o.service);
+                return sum + (service ? service.commission : 0);
+            }, 0);
+
+            // 按技师统计
+            const therapistStats = {};
+            therapists.forEach(t => {
+                therapistStats[t.id] = {
+                    name: t.name,
+                    orders: 0,
+                    revenue: 0,
+                    commission: 0
+                };
+            });
+
+            completedOrders.forEach(o => {
+                if (therapistStats[o.therapistId]) {
+                    therapistStats[o.therapistId].orders++;
+                    therapistStats[o.therapistId].revenue += o.price;
+                    const service = services.find(s => s.name === o.service);
+                    therapistStats[o.therapistId].commission += service ? service.commission : 0;
+                }
+            });
+
+            // 按来源统计
+            const sourceStats = { dianping: 0, phone: 0, wechat: 0 };
+            marchOrders.forEach(o => {
+                sourceStats[o.source]++;
+            });
+
+            let statsHtml = `
+                <h3>📊 3 月数据统计</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+                    <div style="padding: 10px; background: white; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #667eea;">${marchOrders.length}</div>
+                        <div style="font-size: 12px; color: #666;">总订单</div>
+                    </div>
+                    <div style="padding: 10px; background: white; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #10b981;">¥${totalRevenue.toLocaleString()}</div>
+                        <div style="font-size: 12px; color: #666;">总业绩</div>
+                    </div>
+                    <div style="padding: 10px; background: white; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">¥${totalCommission.toLocaleString()}</div>
+                        <div style="font-size: 12px; color: #666;">总提成</div>
+                    </div>
+                </div>
+
+                <h4>👨‍⚕️ 技师统计</h4>
+                <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                    <tr style="background: #f0f0f0;">
+                        <th style="padding: 8px; border: 1px solid #ddd;">技师</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">订单数</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">业绩</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">提成</th>
+                    </tr>
+                    ${Object.values(therapistStats).map(t => `
+                        <tr>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${t.name}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">${t.orders}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">¥${t.revenue.toLocaleString()}</td>
+                            <td style="padding: 8px; border: 1px solid #ddd;">¥${t.commission.toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+
+                <h4>📱 订单来源</h4>
+                <div style="display: flex; gap: 10px;">
+                    <span style="padding: 5px 10px; background: #ff6b6b; color: white; border-radius: 4px;">点评：${sourceStats.dianping}</span>
+                    <span style="padding: 5px 10px; background: #4ecdc4; color: white; border-radius: 4px;">电话：${sourceStats.phone}</span>
+                    <span style="padding: 5px 10px; background: #a8e063; color: white; border-radius: 4px;">微信：${sourceStats.wechat}</span>
+                </div>
+            `;
+
+            document.getElementById('stats').innerHTML = statsHtml;
+            document.getElementById('stats').style.display = 'block';
+        }
+
+        function clearData() {
+            if (confirm('确定要清空所有数据吗？此操作不可恢复！')) {
+                localStorage.removeItem('massageShopData');
+                log('✅ 数据已清空！');
+            }
+        }
+
+        function exportData() {
+            const data = localStorage.getItem('massageShopData');
+            if (!data) {
+                alert('暂无数据可导出');
+                return;
+            }
+
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'massage-shop-data-' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            log('✅ 数据已导出');
+        }
+    </script>
+</body>
+</html>

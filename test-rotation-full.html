@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>技师轮班完整测试</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f5f7fa; }
+        .test-result { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .pass { color: #10b981; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        th { background: #f0f0f0; }
+        .scenario { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .formula { background: #fef3c7; padding: 10px; border-radius: 6px; font-family: monospace; margin: 10px 0; }
+        .day-summary { background: #f0fdf4; padding: 10px; border-radius: 6px; margin: 5px 0; border-left: 4px solid #10b981; }
+        .day-summary.fail { background: #fef2f2; border-left-color: #ef4444; }
+    </style>
+</head>
+<body>
+    <h1>🔄 技师轮班完整测试（3 月数据模拟）</h1>
+    <p>测试场景：模拟 3 月份连续数据，验证每天的第一单是否从"前一天最后一单的下一个技师"开始</p>
+    <div id="results"></div>
+
+    <script>
+        const therapists = [
+            { id: 1, name: '王师傅' },
+            { id: 2, name: '李师傅' },
+            { id: 3, name: '张师傅' },
+            { id: 4, name: '刘师傅' },
+            { id: 5, name: '陈师傅' }
+        ];
+
+        // 模拟 3 月份部分数据（包含有订单和无订单的日期）
+        const testOrders = [
+            // 3 月 30 日（周一）- 5 单
+            { id: '#0301', date: '2026-03-30', therapistId: 1, status: 'completed', completedAt: '2026-03-30T10:00:00Z' },
+            { id: '#0302', date: '2026-03-30', therapistId: 2, status: 'completed', completedAt: '2026-03-30T11:30:00Z' },
+            { id: '#0303', date: '2026-03-30', therapistId: 3, status: 'completed', completedAt: '2026-03-30T14:00:00Z' },
+            { id: '#0304', date: '2026-03-30', therapistId: 4, status: 'completed', completedAt: '2026-03-30T15:30:00Z' },
+            { id: '#0305', date: '2026-03-30', therapistId: 5, status: 'completed', completedAt: '2026-03-30T17:00:00Z' },
+
+            // 3 月 31 日（周二）- 3 单
+            { id: '#0306', date: '2026-03-31', therapistId: 1, status: 'completed', completedAt: '2026-03-31T10:00:00Z' },
+            { id: '#0307', date: '2026-03-31', therapistId: 2, status: 'completed', completedAt: '2026-03-31T11:30:00Z' },
+            { id: '#0308', date: '2026-03-31', therapistId: 3, status: 'completed', completedAt: '2026-03-31T14:00:00Z' },
+
+            // 4 月 1 日（周三）- 4 单
+            { id: '#0401', date: '2026-04-01', therapistId: 4, status: 'completed', completedAt: '2026-04-01T10:00:00Z' },
+            { id: '#0402', date: '2026-04-01', therapistId: 5, status: 'completed', completedAt: '2026-04-01T11:30:00Z' },
+            { id: '#0403', date: '2026-04-01', therapistId: 1, status: 'completed', completedAt: '2026-04-01T14:00:00Z' },
+            { id: '#0404', date: '2026-04-01', therapistId: 2, status: 'completed', completedAt: '2026-04-01T15:30:00Z' },
+
+            // 4 月 2 日（周四）- 2 单
+            { id: '#0405', date: '2026-04-02', therapistId: 3, status: 'completed', completedAt: '2026-04-02T10:00:00Z' },
+            { id: '#0406', date: '2026-04-02', therapistId: 4, status: 'completed', completedAt: '2026-04-02T11:30:00Z' },
+
+            // 4 月 3 日（周五）- 6 单
+            { id: '#0407', date: '2026-04-03', therapistId: 5, status: 'completed', completedAt: '2026-04-03T10:00:00Z' },
+            { id: '#0408', date: '2026-04-03', therapistId: 1, status: 'completed', completedAt: '2026-04-03T11:30:00Z' },
+            { id: '#0409', date: '2026-04-03', therapistId: 2, status: 'completed', completedAt: '2026-04-03T14:00:00Z' },
+            { id: '#0410', date: '2026-04-03', therapistId: 3, status: 'completed', completedAt: '2026-04-03T15:30:00Z' },
+            { id: '#0411', date: '2026-04-03', therapistId: 4, status: 'completed', completedAt: '2026-04-03T17:00:00Z' },
+            { id: '#0412', date: '2026-04-03', therapistId: 5, status: 'completed', completedAt: '2026-04-03T18:30:00Z' },
+
+            // 4 月 4 日（周六）- 无订单（休息日）
+
+            // 4 月 5 日（周日）- 无订单（休息日）
+
+            // 4 月 6 日（周一）- 3 单
+            { id: '#0413', date: '2026-04-06', therapistId: 1, status: 'completed', completedAt: '2026-04-06T10:00:00Z' },
+            { id: '#0414', date: '2026-04-06', therapistId: 2, status: 'completed', completedAt: '2026-04-06T11:30:00Z' },
+            { id: '#0415', date: '2026-04-06', therapistId: 3, status: 'completed', completedAt: '2026-04-06T14:00:00Z' },
+
+            // 4 月 7 日（周二）- 1 单
+            { id: '#0416', date: '2026-04-07', therapistId: 4, status: 'completed', completedAt: '2026-04-07T10:00:00Z' }
+        ];
+
+        let rotationState = { lastDate: null, lastTherapistId: null };
+
+        function updateRotationStateForDate(targetDate) {
+            if (!rotationState.lastDate) {
+                rotationState.lastDate = targetDate;
+                rotationState.lastTherapistId = 1;
+                return;
+            }
+
+            if (rotationState.lastDate === targetDate) {
+                return;
+            }
+
+            const pastOrders = testOrders.filter(o =>
+                o.date < targetDate && o.status === 'completed'
+            );
+
+            if (pastOrders.length === 0) {
+                rotationState.lastTherapistId = 1;
+                rotationState.lastDate = targetDate;
+                return;
+            }
+
+            pastOrders.sort((a, b) => {
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return (a.completedAt || '').localeCompare(b.completedAt || '');
+            });
+
+            const lastOrder = pastOrders[pastOrders.length - 1];
+            rotationState.lastTherapistId = lastOrder.therapistId;
+            rotationState.lastDate = targetDate;
+        }
+
+        function getStartingTherapistForNewDay() {
+            const count = therapists.length;
+            const lastId = rotationState.lastTherapistId || 1;
+            return (lastId % count) + 1;
+        }
+
+        // 按日期分组订单
+        const ordersByDate = {};
+        testOrders.forEach(o => {
+            if (!ordersByDate[o.date]) ordersByDate[o.date] = [];
+            ordersByDate[o.date].push(o);
+        });
+
+        // 排序每天的订单
+        Object.keys(ordersByDate).forEach(date => {
+            ordersByDate[date].sort((a, b) => a.completedAt.localeCompare(b.completedAt));
+        });
+
+        function runTests() {
+            const results = document.getElementById('results');
+            let html = '';
+
+            // 测试的日期列表
+            const testDates = [
+                '2026-03-30', '2026-03-31', '2026-04-01', '2026-04-02', '2026-04-03',
+                '2026-04-04', '2026-04-05', '2026-04-06', '2026-04-07', '2026-04-08'
+            ];
+
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+            let allPassed = true;
+            let expectedFirstTherapist = null;
+
+            testDates.forEach((date, index) => {
+                const dayOrders = ordersByDate[date] || [];
+                const dayOfWeek = weekDays[new Date(date).getDay()];
+
+                // 更新轮班状态
+                updateRotationStateForDate(date);
+                const startTherapistId = getStartingTherapistForNewDay();
+                const startTherapist = therapists.find(t => t.id === startTherapistId);
+
+                // 找前一天的最后一单
+                let yesterdayLastTherapist = null;
+                let yesterdayLastTherapistName = '无';
+                for (let i = index - 1; i >= 0; i--) {
+                    const prevDate = testDates[i];
+                    const prevOrders = ordersByDate[prevDate] || [];
+                    if (prevOrders.length > 0) {
+                        const lastOrder = prevOrders[prevOrders.length - 1];
+                        yesterdayLastTherapist = lastOrder.therapistId;
+                        yesterdayLastTherapistName = therapists.find(t => t.id === yesterdayLastTherapist).name;
+                        break;
+                    }
+                }
+
+                // 计算期望的第一个技师
+                if (yesterdayLastTherapist !== null) {
+                    expectedFirstTherapist = (yesterdayLastTherapist % 5) + 1;
+                } else {
+                    expectedFirstTherapist = 1; // 第一天默认 1 号
+                }
+
+                const isCorrect = startTherapistId === expectedFirstTherapist;
+                if (!isCorrect) allPassed = false;
+
+                html += '<div class="scenario">';
+                html += `<h3>${date} (${dayOfWeek})</h3>`;
+
+                // 显示前一天信息
+                if (yesterdayLastTherapist !== null) {
+                    html += `<p>前一天最后一单技师：<strong>${yesterdayLastTherapistName}</strong></p>`;
+                    html += `<div class="formula">期望第一单技师 = (${yesterdayLastTherapist} % 5) + 1 = <strong>${expectedFirstTherapist}号</strong></div>`;
+                } else {
+                    html += `<p>这是第一天，默认从 1 号开始</p>`;
+                }
+
+                // 显示实际结果
+                html += `<p>实际推荐第一单技师：<strong>${startTherapist.name}</strong> `;
+                html += isCorrect ? `<span class="pass">✓ 正确</span>` : `<span class="fail">✗ 错误（应该是${expectedFirstTherapist}号）</span>`;
+                html += `</p>`;
+
+                // 显示当天的订单列表
+                if (dayOrders.length > 0) {
+                    html += '<div class="day-summary">';
+                    html += `<strong>当天订单 (${dayOrders.length}单):</strong><br>`;
+                    html += dayOrders.map((o, i) => {
+                        const t = therapists.find(t => t.id === o.therapistId);
+                        const marker = (i === 0) ? '【第一单】' : '';
+                        return `${marker}${t.name}`;
+                    }).join(' → ');
+                    html += '</div>';
+                } else {
+                    html += '<div class="day-summary fail">⚠️ 无订单（休息日）</div>';
+                }
+
+                html += '</div>';
+            });
+
+            // 总体结果
+            html += '<div class="test-result">';
+            html += '<h2>测试结果总结</h2>';
+            html += allPassed ? '<p class="pass">✓ 所有日期的轮班逻辑都正确！</p>' : '<p class="fail">✗ 部分日期的轮班逻辑有误，请检查上方详情</p>';
+
+            // 显示预期的轮班顺序
+            html += '<h3>预期轮班顺序（按天）</h3>';
+            html += '<table><tr><th>日期</th><th>星期</th><th>订单数</th><th>预期第一单</th><th>实际最后一单</th></tr>';
+
+            testDates.forEach(date => {
+                const dayOrders = ordersByDate[date] || [];
+                const dayOfWeek = weekDays[new Date(date).getDay()];
+
+                // 找前一天最后一单
+                const idx = testDates.indexOf(date);
+                let yesterdayLastTherapistName = '-';
+                for (let i = idx - 1; i >= 0; i--) {
+                    const prevDate = testDates[i];
+                    const prevOrders = ordersByDate[prevDate] || [];
+                    if (prevOrders.length > 0) {
+                        const lastOrder = prevOrders[prevOrders.length - 1];
+                        yesterdayLastTherapistName = therapists.find(t => t.id === lastOrder.therapistId).name;
+                        break;
+                    }
+                }
+
+                updateRotationStateForDate(date);
+                const startId = getStartingTherapistForNewDay();
+
+                html += `<tr>
+                    <td>${date}</td>
+                    <td>${dayOfWeek}</td>
+                    <td>${dayOrders.length}</td>
+                    <td>${startId}号 ${therapists.find(t => t.id === startId).name}</td>
+                    <td>${yesterdayLastTherapistName}</td>
+                </tr>`;
+            });
+
+            html += '</table>';
+            html += '</div>';
+
+            results.innerHTML = html;
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
