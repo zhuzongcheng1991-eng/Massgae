@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>加载测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <pre id="out"></pre>
+    <script>
+        const out = document.getElementById('out');
+        function log(msg) { out.textContent += msg + '\n'; }
+
+        const client = window.supabase.createClient(
+            'https://vgyklddspgvtbwvegsob.supabase.co',
+            'sb_publishable_n9gfFPMnLr8ZiuAJdyT0WQ_ywxZWMnq',
+            { auth: { autoRefreshToken: false, persistSession: false }, db: { schema: 'public' } }
+        );
+
+        (async () => {
+            log('=== 1. 测试 config 表 ===');
+            const { data: cfg, error: cfgErr } = await client.from('config').select('*').eq('key', 'app_data').single();
+            if (cfgErr) { log('❌ ' + cfgErr.message); }
+            else {
+                log('✓ config 读取成功');
+                log('  技师数: ' + (cfg.data.therapists || []).length);
+                log('  技师名: ' + (cfg.data.therapists || []).map(t => t.name).join(', '));
+                log('  项目数: ' + (cfg.data.services || []).length);
+                log('  床位数: ' + (cfg.data.beds || []).length);
+            }
+
+            log('\n=== 2. 测试 orders 表 ===');
+            const { data: ords, error: ordsErr } = await client.from('orders').select('*').order('date', { ascending: false });
+            if (ordsErr) { log('❌ ' + ordsErr.message); }
+            else {
+                log('✓ orders 读取成功，共 ' + ords.length + ' 天');
+                ords.forEach(o => {
+                    log('  ' + o.date + ': ' + (o.data || []).length + ' 个订单');
+                    if (o.data && o.data.length > 0) {
+                        o.data.forEach(ord => {
+                            log('    - ' + ord.id + ' ' + ord.service + ' ' + ord.startTime + ' 技师' + ord.therapistId + ' ' + ord.status);
+                        });
+                    }
+                });
+            }
+
+            log('\n=== 3. 模拟 loadData 流程 ===');
+            let appData = { therapists: [], beds: [], services: [], orders: [], settings: {}, rotationState: { lastDate: null, lastTherapistId: null } };
+
+            if (cfg && cfg.data) {
+                appData.therapists = cfg.data.therapists || [];
+                appData.beds = cfg.data.beds || [];
+                appData.services = cfg.data.services || [];
+                appData.settings = cfg.data.settings || {};
+                appData.rotationState = cfg.data.rotationState || { lastDate: null, lastTherapistId: null };
+            }
+            log('appData.therapists = ' + appData.therapists.length);
+            log('appData.beds = ' + appData.beds.length);
+            log('appData.services = ' + appData.services.length);
+
+            if (ords && ords.length > 0) {
+                appData.orders = ords.flatMap(o => o.data || []);
+            }
+            log('appData.orders = ' + appData.orders.length);
+
+            const today = new Date().toISOString().split('T')[0];
+            log('\n今天: ' + today);
+            log('今天订单: ' + appData.orders.filter(o => o.date === today).length);
+
+            log('\n=== 4. 选择 4/3 看看 ===');
+            const day3orders = appData.orders.filter(o => o.date === '2026-04-03');
+            log('4/3 订单: ' + day3orders.length);
+            day3orders.forEach(o => log('  ' + o.id + ' ' + o.service + ' ' + o.startTime + ' T' + o.therapistId + ' ' + o.status));
+        })();
+    </script>
+</body>
+</html>

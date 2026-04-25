@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>调试 - Supabase 数据加载</title>
+    <style>
+        body { font-family: monospace; background: #1a1a2e; color: #e2e8f0; padding: 20px; }
+        .log { padding: 8px; border-left: 3px solid #667eea; margin: 4px 0; font-size: 13px; }
+        .log.ok { border-color: #10b981; color: #4ade80; }
+        .log.err { border-color: #ef4444; color: #f87171; }
+        .log.info { border-color: #3b82f6; color: #60a5fa; }
+        h1 { color: #fff; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Supabase 数据加载调试</h1>
+    <div id="log"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://vgyklddspgvtbwvegsob.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_n9gfFPMnLr8ZiuAJdyT0WQ_ywxZWMnq';
+        const log = document.getElementById('log');
+
+        function addLog(msg, type = '') {
+            const div = document.createElement('div');
+            div.className = 'log ' + type;
+            div.textContent = msg;
+            log.appendChild(div);
+        }
+
+        (async () => {
+            if (!window.supabase) {
+                addLog('Supabase SDK 加载失败', 'err');
+                return;
+            }
+            addLog('✓ Supabase SDK 已加载', 'ok');
+
+            const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+                auth: { autoRefreshToken: false, persistSession: false },
+                db: { schema: 'public' }
+            });
+
+            // Test 1: Config
+            addLog('读取 config 表...', 'info');
+            const { data: configData, error: configErr } = await client.from('config').select('*').eq('key', 'app_data');
+            if (configErr) {
+                addLog('❌ config 读取失败: ' + configErr.message, 'err');
+            } else if (!configData || configData.length === 0) {
+                addLog('⚠️ config 表中无 app_data 记录', 'err');
+            } else {
+                const c = configData[0].data;
+                addLog('✓ config 读取成功', 'ok');
+                addLog('  技师: ' + c.therapists.map(t => t.name).join(', '), 'ok');
+                addLog('  床位: ' + c.beds.length + ' 个', 'ok');
+                addLog('  项目: ' + c.services.length + ' 个', 'ok');
+                addLog('  轮班: ' + JSON.stringify(c.rotationState), 'ok');
+            }
+
+            // Test 2: Orders
+            addLog('读取 orders 表...', 'info');
+            const { data: orderData, error: orderErr } = await client.from('orders').select('*').order('date', { ascending: false });
+            if (orderErr) {
+                addLog('❌ orders 读取失败: ' + orderErr.message, 'err');
+            } else {
+                addLog('✓ orders 读取成功，共 ' + orderData.length + ' 天', 'ok');
+                orderData.forEach(o => {
+                    addLog('  ' + o.date + ': ' + (o.data || []).length + ' 个订单', 'ok');
+                });
+            }
+
+            // Test 3: Simulate full loadData flow
+            addLog('模拟完整 loadData 流程...', 'info');
+            let appData = {
+                therapists: [],
+                beds: [],
+                services: [],
+                orders: [],
+                settings: {},
+                rotationState: { lastDate: null, lastTherapistId: null }
+            };
+
+            // Load config
+            if (configData && configData.length > 0) {
+                const c = configData[0].data;
+                appData.therapists = c.therapists || [];
+                appData.beds = c.beds || [];
+                appData.services = c.services || [];
+                appData.settings = c.settings || {};
+                appData.rotationState = c.rotationState || { lastDate: null, lastTherapistId: null };
+                addLog('✓ 配置数据已加载到 appData', 'ok');
+            }
+
+            // Load orders
+            if (orderData && orderData.length > 0) {
+                appData.orders = orderData.flatMap(o => o.data || []);
+                addLog('✓ 订单数据已加载到 appData: ' + appData.orders.length + ' 个订单', 'ok');
+            }
+
+            addLog('最终 appData: 技师=' + appData.therapists.length + ' 订单=' + appData.orders.length, 'ok');
+
+            // Check selectedDate
+            const today = new Date().toISOString().split('T')[0];
+            addLog('今天: ' + today, 'info');
+            const todayOrders = appData.orders.filter(o => o.date === today);
+            addLog('今天订单: ' + todayOrders.length + ' 个', todayOrders.length > 0 ? 'ok' : 'err');
+        })();
+    </script>
+</body>
+</html>

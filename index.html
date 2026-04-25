@@ -402,6 +402,8 @@
 
         .gantt-wrapper {
             min-width: 1000px;
+            overflow-x: auto;
+            overflow-y: visible;
         }
 
         .time-axis {
@@ -439,7 +441,8 @@
             position: absolute;
             left: 0;
             top: 0;
-            height: 1000px;
+            height: calc(100vh - 200px);
+            max-height: 600px;
             border-left: 1px dashed var(--border-light);
             pointer-events: none;
         }
@@ -2292,10 +2295,11 @@
             const dayOrders = appData.orders.filter(o => o.date === selectedDate);
 
             const stats = {
-                total: dayOrders.filter(o => o.status !== 'cancelled' && o.status !== 'expired').length,
+                total: dayOrders.filter(o => o.status !== 'cancelled').length,
                 pending: dayOrders.filter(o => o.status === 'pending').length,
                 arrived: dayOrders.filter(o => o.status === 'arrived').length,
                 completed: dayOrders.filter(o => o.status === 'completed').length,
+                expired: dayOrders.filter(o => o.status === 'expired').length,
                 revenue: dayOrders.filter(o => o.status === 'completed')
                     .reduce((sum, o) => sum + o.price + (o.addons || []).reduce((s, a) => s + a.price, 0), 0)
             };
