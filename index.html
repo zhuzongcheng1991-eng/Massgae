@@ -341,7 +341,7 @@
             padding: 20px 24px;
             margin-bottom: 24px;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 24px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border-light);
@@ -1696,7 +1696,8 @@
             showToast('已退出管理员');
         }
 
-        // ==================== Supabase Cloud Sync ====================
+        // ==================== Supabase Cloud Storage ====================
+        // 所有数据都存储在 Supabase，localStorage 仅作离线缓存
         const SUPABASE_URL = 'https://vgyklddspgvtbwvegsob.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_n9gfFPMnLr8ZiuAJdyT0WQ_ywxZWMnq';
         var supabaseClient = null;
@@ -1714,81 +1715,116 @@
                     }
                 });
                 isCloudSync = true;
-                console.log('[Cloud] Supabase initialized');
+                console.log('[Cloud] Supabase initialized - 所有数据将存储在云端');
             }
         }
 
+        // 保存所有数据到 Supabase
         async function saveToCloud() {
-            if (!supabaseClient || !isCloudSync) return;
-
-            const today = getTodayStr();
-            const todayOrders = appData.orders.filter(o => o.date === today);
-
-            if (todayOrders.length === 0) return;
+            if (!supabaseClient) return;
 
             try {
-                const { data: existing, error: fetchError } = await supabaseClient
-                    .from('orders')
-                    .select('*')
-                    .eq('date', today)
-                    .maybeSingle();
+                // 1. 保存订单（按日分组）
+                const ordersByDate = {};
+                appData.orders.forEach(o => {
+                    if (!ordersByDate[o.date]) ordersByDate[o.date] = [];
+                    ordersByDate[o.date].push(o);
+                });
 
-                if (fetchError) {
-                    console.error('[Cloud] Fetch error:', fetchError);
+                for (const [date, dayOrders] of Object.entries(ordersByDate)) {
+                    const { data: existing } = await supabaseClient
+                        .from('orders')
+                        .select('id')
+                        .eq('date', date)
+                        .maybeSingle();
+
+                    if (existing) {
+                        await supabaseClient
+                            .from('orders')
+                            .update({ data: dayOrders, updated_at: new Date().toISOString() })
+                            .eq('date', date);
+                    } else {
+                        await supabaseClient
+                            .from('orders')
+                            .insert({ date, data: dayOrders });
+                    }
                 }
 
-                if (existing) {
+                // 2. 保存非订单数据（技师、床位、项目、设置、轮班状态）
+                const appConfig = {
+                    therapists: appData.therapists,
+                    beds: appData.beds,
+                    services: appData.services,
+                    settings: appData.settings,
+                    rotationState: appData.rotationState,
+                    updatedAt: new Date().toISOString()
+                };
+
+                const { data: existingConfig } = await supabaseClient
+                    .from('config')
+                    .select('id')
+                    .eq('key', 'app_data')
+                    .maybeSingle();
+
+                if (existingConfig) {
                     await supabaseClient
-                        .from('orders')
-                        .update({
-                            data: todayOrders,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('date', today);
+                        .from('config')
+                        .update({ data: appConfig, updated_at: new Date().toISOString() })
+                        .eq('key', 'app_data');
                 } else {
                     await supabaseClient
-                        .from('orders')
-                        .insert({
-                            date: today,
-                            data: todayOrders
-                        });
+                        .from('config')
+                        .insert({ key: 'app_data', data: appConfig });
                 }
-                console.log('[Cloud] Saved today orders:', todayOrders.length);
+
+                console.log('[Cloud] 全部数据已保存:', Object.keys(ordersByDate).length, '天订单 + 配置');
             } catch (err) {
-                console.error('[Cloud] Save error:', err);
+                console.error('[Cloud] 保存失败:', err);
             }
         }
 
+        // 从 Supabase 加载所有数据
         async function loadFromCloud() {
-            if (!supabaseClient || !isCloudSync) return false;
-
-            const today = getTodayStr();
+            if (!supabaseClient) return false;
 
             try {
-                const { data, error } = await supabaseClient
-                    .from('orders')
-                    .select('*')
-                    .eq('date', today)
+                // 1. 加载配置数据
+                const { data: configData } = await supabaseClient
+                    .from('config')
+                    .select('key, data')
+                    .eq('key', 'app_data')
                     .maybeSingle();
 
-                if (error) {
-                    console.error('[Cloud] Load error:', error);
-                    return false;
+                if (configData) {
+                    const c = configData.data;
+                    if (c.therapists && c.therapists.length > 0) appData.therapists = c.therapists;
+                    if (c.beds && c.beds.length > 0) appData.beds = c.beds;
+                    if (c.services && c.services.length > 0) appData.services = c.services;
+                    if (c.settings) appData.settings = { ...appData.settings, ...c.settings };
+                    if (c.rotationState) appData.rotationState = c.rotationState;
+                    console.log('[Cloud] 已加载配置数据');
                 }
 
-                if (!data) {
-                    console.log('[Cloud] No data in cloud');
-                    return false;
+                // 2. 加载所有订单
+                const { data: allOrders } = await supabaseClient
+                    .from('orders')
+                    .select('date, data')
+                    .order('date', { ascending: true });
+
+                if (allOrders && allOrders.length > 0) {
+                    const cloudOrders = allOrders.flatMap(o => o.data || []);
+                    // 合并：云数据优先
+                    const cloudDates = new Set(allOrders.map(o => o.date));
+                    const localOnly = appData.orders.filter(o => !cloudDates.has(o.date));
+                    appData.orders = [...localOnly, ...cloudOrders];
+                    console.log('[Cloud] 已加载', cloudOrders.length, '个订单（', allOrders.length, '天）');
+                    return true;
                 }
 
-                const cloudOrders = data.data || [];
-                const localOrders = appData.orders.filter(o => o.date !== today);
-
-                appData.orders = [...localOrders, ...cloudOrders];
-                console.log('[Cloud] Loaded', cloudOrders.length, 'orders from cloud');
-                return true;
+                console.log('[Cloud] 无云数据，使用本地');
+                return false;
             } catch (err) {
-                console.error('[Cloud] Load error:', err);
+                console.error('[Cloud] 加载失败:', err);
                 return false;
             }
         }
@@ -1891,10 +1927,40 @@
         };
 
         async function loadData() {
-            const saved = localStorage.getItem(STORE_KEY);
-            if (saved) {
-                appData = JSON.parse(saved);
-                // Migrate old data - add services if not present
+            // 1. 初始化 Supabase
+            initSupabase();
+
+            // 2. 优先从 Supabase 加载所有数据
+            const loaded = await loadFromCloud();
+
+            if (!loaded) {
+                // 3. 云端无数据，从 localStorage 加载（离线缓存或首次使用）
+                const saved = localStorage.getItem(STORE_KEY);
+                if (saved) {
+                    appData = JSON.parse(saved);
+                    // Migrate old data
+                    if (!appData.services) {
+                        appData.services = [
+                            { id: 1, name: '足疗 60min', duration: 60, price: 198, commission: 60 },
+                            { id: 2, name: '足疗 90min', duration: 90, price: 298, commission: 90 },
+                            { id: 3, name: '精油 SPA 60min', duration: 60, price: 268, commission: 80 },
+                            { id: 4, name: '精油 SPA 90min', duration: 90, price: 398, commission: 120 },
+                            { id: 5, name: '推拿 60min', duration: 60, price: 198, commission: 60 },
+                            { id: 6, name: '推拿 90min', duration: 90, price: 298, commission: 90 },
+                            { id: 7, name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
+                        ];
+                    }
+                    appData.services.forEach(s => {
+                        if (s.commission === undefined) {
+                            s.commission = Math.round(s.price * 0.3);
+                        }
+                    });
+                    if (!appData.rotationState) {
+                        appData.rotationState = { lastDate: null, lastTherapistId: null };
+                    }
+                }
+            } else {
+                // 从云端加载后，做本地迁移处理
                 if (!appData.services) {
                     appData.services = [
                         { id: 1, name: '足疗 60min', duration: 60, price: 198, commission: 60 },
@@ -1906,38 +1972,27 @@
                         { id: 7, name: '泰式按摩 90min', duration: 90, price: 368, commission: 100 }
                     ];
                 }
-                // Migrate old services without commission field
                 appData.services.forEach(s => {
                     if (s.commission === undefined) {
-                        s.commission = Math.round(s.price * 0.3); // Default 30% commission
+                        s.commission = Math.round(s.price * 0.3);
                     }
                 });
-                // Migrate rotationState if not present
                 if (!appData.rotationState) {
-                    appData.rotationState = {
-                        lastDate: null,
-                        lastTherapistId: null
-                    };
+                    appData.rotationState = { lastDate: null, lastTherapistId: null };
                 }
-                // Migrate old completed orders without arrivedAt to expired
-                const today = getTodayStr();
-                appData.orders.forEach(order => {
-                    if (order.date === today && order.status === 'completed' && !order.arrivedAt) {
-                        order.status = 'expired';
-                    }
-                });
             }
-            // Check if it's a new day and update rotation state
+
+            // 4. 更新轮班状态
             updateRotationState();
-            // Initialize Supabase and try to load from cloud
-            initSupabase();
-            await loadFromCloud();
+
+            // 5. 更新同步状态指示
             updateSyncStatus();
         }
 
         function saveData() {
+            // 保存到 localStorage（离线缓存）
             localStorage.setItem(STORE_KEY, JSON.stringify(appData));
-            // Sync to cloud in background
+            // 同步到 Supabase（主存储）
             saveToCloud();
         }
 
